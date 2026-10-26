@@ -22,7 +22,8 @@ astrbot_plugin_automas_connect/
 │  └─ vendor/mdi/      自托管的 Material Design 图标字体（不走 CDN）
 ├─ tools/
 │  └─ gen_config_schema.py   从 AUTO-MAS 源码抽字段 schema 注入 app.js
-└─ _schema.json         生成脚本的中间产物（升级 AUTO-MAS 后重跑时用）
+├─ _schema.json         生成脚本的中间产物（升级 AUTO-MAS 后重跑时用）
+└─ docs/screenshots/    README 里的展示图
 ```
 ## 装之前
 
