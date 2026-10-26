@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AUTO-MAS调度台</title>
+    <link rel="stylesheet" href="./vendor/mdi/materialdesignicons.min.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="title-block">
+          <h1>AUTO-MAS调度台</h1>
+          <div class="runtime-status" id="runtime-status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span>正在连接</span>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span class="base-url" id="base-url"></span>
+          <button class="icon-button" id="refresh-button" type="button" title="刷新" aria-label="刷新">
+            ↻
+          </button>
+        </div>
+      </header>
+
+      <section class="summary-band" aria-label="运行概况">
+        <div class="metric">
+          <span class="metric-label">托管项</span>
+          <strong id="metric-scripts">-</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">运行中</span>
+          <strong id="metric-running">-</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">计划表</span>
+          <strong id="metric-plans">-</strong>
+        </div>
+      </section>
+
+      <p class="error-notice is-hidden" id="error-notice"></p>
+
+      <nav class="view-tabs" id="view-tabs" role="tablist" aria-label="功能分区">
+        <button class="view-tab is-active" data-view="scripts" type="button" role="tab">托管</button>
+        <button class="view-tab" data-view="plans" type="button" role="tab">计划表</button>
+        <button class="view-tab" data-view="queue" type="button" role="tab">队列</button>
+        <button class="view-tab" data-view="emulator" type="button" role="tab">模拟器</button>
+        <button class="view-tab" data-view="history" type="button" role="tab">历史</button>
+        <button class="view-tab" data-view="settings" type="button" role="tab">设置</button>
+      </nav>
+
+      <div class="view workspace" id="view-scripts" data-view="scripts">
+        <aside class="script-pane">
+          <div class="pane-head pane-head-actions">
+            <span>托管项</span>
+            <button class="mini-button" id="script-create" type="button"><i class="mdi mdi-plus"></i> 新建</button>
+          </div>
+          <ul class="script-list" id="script-list"></ul>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions" id="detail-head">
+            <span id="detail-title">选一个托管项</span>
+            <span class="head-actions">
+              <select class="mini-button is-hidden" id="start-mode" title="运行模式">
+                <option value="AutoProxy">按托管项</option>
+                <option value="ScriptConfig">按脚本配置</option>
+                <option value="Update">仅更新</option>
+                <option value="CycleRun">循环运行</option>
+              </select>
+              <button class="mini-button is-hidden" id="script-start" type="button"><i class="mdi mdi-play"></i> 运行</button>
+              <button class="mini-button is-hidden" id="script-config" type="button">托管配置</button>
+              <button class="mini-button is-danger is-hidden" id="script-delete" type="button">删除托管</button>
+              <button class="mini-button is-hidden" id="user-create" type="button"><i class="mdi mdi-account-plus"></i> 新建账号</button>
+            </span>
+          </div>
+          <div id="running-panel"></div>
+          <ul class="user-list" id="user-list"></ul>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-plans" data-view="plans">
+        <aside class="script-pane">
+          <div class="pane-head pane-head-actions">
+            <span>计划表</span>
+            <button class="mini-button" id="plan-create" type="button"><i class="mdi mdi-plus"></i> 新建</button>
+          </div>
+          <ul class="script-list" id="plan-list"></ul>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions">
+            <span id="plan-title">选一个计划表</span>
+            <span class="head-actions">
+              <button class="mini-button is-danger is-hidden" id="plan-delete" type="button"><i class="mdi mdi-delete-outline"></i> 删除</button>
+              <button class="mini-button is-hidden" id="plan-save" type="button"><i class="mdi mdi-content-save-outline"></i> 保存</button>
+            </span>
+          </div>
+          <div class="plan-editor" id="plan-editor"></div>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-queue" data-view="queue">
+        <aside class="script-pane">
+          <div class="pane-head pane-head-actions">
+            <span>调度队列</span>
+            <button class="mini-button" id="queue-create" type="button"><i class="mdi mdi-plus"></i> 新建</button>
+          </div>
+          <ul class="script-list" id="queue-list"></ul>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions">
+            <span id="queue-title">选一个队列</span>
+            <span class="head-actions">
+              <button class="mini-button is-hidden" id="queue-run" type="button"><i class="mdi mdi-play"></i> 运行</button>
+              <button class="mini-button is-danger is-hidden" id="queue-delete" type="button"><i class="mdi mdi-delete-outline"></i> 删除</button>
+              <button class="mini-button is-hidden" id="queue-save" type="button"><i class="mdi mdi-content-save-outline"></i> 保存</button>
+            </span>
+          </div>
+          <div class="queue-editor" id="queue-editor"></div>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-emulator" data-view="emulator">
+        <aside class="script-pane">
+          <div class="pane-head pane-head-actions">
+            <span>模拟器</span>
+            <button class="mini-button" id="emulator-create" type="button"><i class="mdi mdi-plus"></i> 新建</button>
+          </div>
+          <ul class="script-list" id="emulator-list"></ul>
+          <div class="pane-tools">
+            <button class="mini-button" id="emulator-search" type="button">搜索本机模拟器</button>
+          </div>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions">
+            <span id="emulator-title">选一个模拟器</span>
+            <span class="head-actions">
+              <button class="mini-button is-danger is-hidden" id="emulator-delete" type="button"><i class="mdi mdi-delete-outline"></i> 删除</button>
+              <button class="mini-button is-hidden" id="emulator-save" type="button"><i class="mdi mdi-content-save-outline"></i> 保存</button>
+            </span>
+          </div>
+          <div class="emulator-editor" id="emulator-editor"></div>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-history" data-view="history">
+        <aside class="script-pane">
+          <div class="pane-head"><span>运行历史</span></div>
+          <div class="hist-filter">
+            <label>开始<input type="date" id="hist-start"></label>
+            <label>结束<input type="date" id="hist-end"></label>
+            <label>粒度<select id="hist-mode">
+              <option value="DAILY">按天</option>
+              <option value="WEEKLY">按周</option>
+              <option value="MONTHLY">按月</option>
+            </select></label>
+            <button class="mini-button" id="hist-search" type="button">查询</button>
+          </div>
+          <ul class="script-list" id="hist-day-list"></ul>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head"><span id="hist-title">选一天</span></div>
+          <div class="hist-body" id="hist-body"></div>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-settings" data-view="settings">
+        <aside class="script-pane">
+          <div class="pane-head"><span>设置</span></div>
+          <ul class="script-list" id="setting-groups"></ul>
+          <div class="pane-tools">
+            <button class="mini-button" id="setting-test" type="button">发一条测试通知</button>
+          </div>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions">
+            <span id="setting-title">选一个分组</span>
+            <span class="head-actions">
+              <button class="mini-button is-hidden" id="webhook-create" type="button"><i class="mdi mdi-webhook"></i> 新建渠道</button>
+            </span>
+          </div>
+          <div class="setting-editor" id="setting-editor"></div>
+        </main>
+      </div>
+    </div>
+
+    <div class="modal is-hidden" id="confirm">
+      <div class="modal-card">
+        <p id="confirm-text">有还没保存的改动。</p>
+        <div class="modal-actions">
+          <button class="ghost-button" id="confirm-cancel" type="button">取消</button>
+          <button class="ghost-button" id="confirm-ok" type="button">不保存</button>
+          <button class="primary-button" id="confirm-save" type="button">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer is-hidden" id="drawer">
+      <div class="drawer-card">
+        <header class="drawer-head">
+          <h2 id="drawer-title">账号配置</h2>
+          <button class="icon-button" id="drawer-close" type="button" aria-label="关闭">×</button>
+        </header>
+        <div class="drawer-body">
+          <div class="drawer-tabs" role="tablist" aria-label="配置分类">
+            <button class="drawer-tab is-active" id="tab-basic" data-tab="basic" type="button" role="tab" aria-selected="true">基础</button>
+            <button class="drawer-tab" id="tab-task" data-tab="task" type="button" role="tab" aria-selected="false">任务配置</button>
+            </div>
+
+          <div class="tab-panel" id="panel-basic" data-panel="basic">
+          <label class="field">
+            <span>账号名</span>
+            <input id="field-name" type="text" />
+          </label>
+          <label class="field field-inline">
+            <input id="field-status" type="checkbox" />
+            <span>启用</span>
+          </label>
+          <label class="field field-inline">
+            <input id="field-quick" type="checkbox" />
+            <span>启用覆写常规配置</span>
+          </label>
+          <label class="field">
+            <span>配置基线</span>
+            <select id="field-base">
+              <option value="shared">共享（脚本级共用计划）</option>
+              <option value="independent">独立（本账号自己的计划）</option>
+              <option value="native">原生（照运行脚本自己的配置）</option>
+            </select>
+          </label>
+          <div class="field infrast-block">
+            <span>自定义基建排班表</span>
+            <p class="hint" id="infrast-current">还没读过。</p>
+            <div class="infrast-tools">
+              <input id="infrast-dir" type="text" placeholder="留空 = MAA 目录下 resource/custom_infrast，可填别的目录" />
+              <button class="mini-button" id="infrast-scan" type="button">扫描目录</button>
+            </div>
+            <div class="infrast-list" id="infrast-list"></div>
+          </div>
+          <details class="json-block">
+            <summary>完整配置 JSON</summary>
+            <p class="hint">
+              改完常用字段再展开，点保存时以这里的 JSON 为准。手改字段名要跟 AUTO-MAS 一致。
+            </p>
+            <textarea id="json-editor" spellcheck="false"></textarea>
+          </details>
+          </div>
+
+          <div class="tab-panel is-hidden" id="panel-task" data-panel="task">
+            <p class="hint is-hidden" id="task-empty-hint">
+              这个托管在 AUTO-MAS 里没有 MAA 式的任务配置段，请到「基础」页的完整配置 JSON 里改。
+            </p>
+            <p class="hint is-hidden" id="task-quick-hint">
+              当前没启用「覆写常规配置」，这页的配置运行时不生效。要生效请回「基础」页勾上。
+            </p>
+            <div class="task-form" id="task-form"></div>
+          </div>
+
+        </div>
+        <footer class="drawer-foot">
+          <span class="save-state" id="save-state"></span>
+          <button class="ghost-button" id="drawer-cancel" type="button">取消</button>
+          <button class="primary-button" id="drawer-save" type="button"><i class="mdi mdi-content-save-outline"></i> 保存</button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="drawer is-hidden" id="script-drawer">
+      <div class="drawer-card">
+        <header class="drawer-head">
+          <h2 id="script-drawer-title">托管配置</h2>
+          <button class="icon-button" id="script-drawer-close" type="button" aria-label="关闭">×</button>
+        </header>
+        <div class="drawer-body">
+          <div class="task-form" id="script-form"></div>
+          <details class="json-block">
+            <summary>托管项完整 JSON</summary>
+            <p class="hint">Emulator / Info / Run / Update 四段，手改字段名要跟 AUTO-MAS 一致。</p>
+            <textarea id="script-json" spellcheck="false"></textarea>
+          </details>
+        </div>
+        <footer class="drawer-foot">
+          <span class="save-state" id="script-save-state"></span>
+          <button class="ghost-button" id="script-drawer-cancel" type="button">取消</button>
+          <button class="primary-button" id="script-drawer-save" type="button"><i class="mdi mdi-content-save-outline"></i> 保存</button>
+        </footer>
+      </div>
+    </div>
+
+    <datalist id="stage-options"></datalist>
+
+    <div class="toast is-hidden" id="toast" role="status"></div>
+
+    <!--
+      脚本必须是 type="module"：AstrBot 注入 bridge SDK 的位置在本行之后，
+      模块脚本默认 defer，能保证 window.AstrBotPluginPage 已经就绪。
+      本注释内不要出现文档结束标签的字面量，否则 SDK 会被注入进注释里。
+    -->
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

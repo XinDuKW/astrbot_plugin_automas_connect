@@ -1,0 +1,5644 @@
+{
+ "user": {
+  "MaaConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "MaaUserConfig.DataFields",
+    "fields": {
+     "AnnihilationCompletedWeek": {
+      "kind": "str",
+      "label": "剿灭达到周上限时的 ISO 周（形如 \"2026-W34\"）"
+     },
+     "CultivateNotice": {
+      "kind": "str",
+      "label": "养成接管提示（注入时写入，供前端展示接管态；空 = 未接管）"
+     },
+     "CustomInfrast": {
+      "kind": "json",
+      "label": "自定义基建配置"
+     },
+     "GreenTicketStoreMonth": {
+      "kind": "str",
+      "label": "上次完成绿票商店购买的完整时间，按 UTC+4 判断月份；空值表示尚未完成",
+      "default": null,
+      "raw": "datetime"
+     },
+     "InfrastPlanIndex": {
+      "kind": "int",
+      "label": "无时段排班表下一班的索引：每用户一份、由 MAS 在基建换班完成后推进； 带时段表交 MAA 按时段选班，不读它"
+     },
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastResVersion": {
+      "kind": "str",
+      "label": "上次成功代理时服务端的游戏资源版本，用于识别待下载的资源热更新"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     },
+     "StaminaPipelineBackup": {
+      "kind": "json",
+      "label": "理智流程升级前完整用户配置 JSON"
+     },
+     "StaminaPipelineVersion": {
+      "kind": "int",
+      "label": "理智流程配置迁移版本与升级前完整用户配置（关闭的旧计划仍可找回）"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "用户 ID"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Server": {
+      "kind": "enum",
+      "label": "游戏服务器",
+      "options": [
+       "Official",
+       "Bilibili",
+       "YoStarEN",
+       "YoStarJP",
+       "YoStarKR",
+       "txwy"
+      ]
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息（虚拟字段，供前端显示）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "MaaUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendSixStar": {
+      "kind": "bool",
+      "label": "是否发送六星通知"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Stage": {
+    "kind": "object",
+    "ref": "MaaUserConfig.StageFields",
+    "fields": {
+     "MedicineNumb": {
+      "kind": "int",
+      "label": "理智药数量"
+     },
+     "SeriesNumb": {
+      "kind": "enum",
+      "label": "连战次数",
+      "options": [
+       "0",
+       "6",
+       "5",
+       "4",
+       "3",
+       "2",
+       "1",
+       "-1"
+      ]
+     },
+     "Stage": {
+      "kind": "str",
+      "label": "主关卡"
+     },
+     "StageMode": {
+      "kind": "str",
+      "label": "关卡模式（Fixed 或关卡计划表 UUID）",
+      "raw": "UUID | str"
+     },
+     "Stage_1": {
+      "kind": "str",
+      "label": "备选关卡 1"
+     },
+     "Stage_2": {
+      "kind": "str",
+      "label": "备选关卡 2"
+     },
+     "Stage_3": {
+      "kind": "str",
+      "label": "备选关卡 3"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaUserConfig.TaskFields",
+    "fields": {
+     "ActivityMedicineNumb": {
+      "kind": "int",
+      "label": "活动关优先任务吃理智药数量"
+     },
+     "ActivityStageIndex": {
+      "kind": "int",
+      "label": "优先刷取的活动关卡序号"
+     },
+     "Annihilation": {
+      "kind": "enum",
+      "label": "剿灭模式",
+      "options": [
+       "Close",
+       "Annihilation",
+       "Chernobog@Annihilation",
+       "LungmenOutskirts@Annihilation",
+       "LungmenDowntown@Annihilation"
+      ]
+     },
+     "AnnihilationStartWeekday": {
+      "kind": "enum",
+      "label": "剿灭开始星期",
+      "options": [
+       "Monday",
+       "Tuesday",
+       "Wednesday",
+       "Thursday",
+       "Friday",
+       "Saturday",
+       "Sunday"
+      ]
+     },
+     "CultivateAutoRaise": {
+      "kind": "bool",
+      "label": "是否注入 MAA 原生干员培养任务"
+     },
+     "CultivateSkipDuringActivity": {
+      "kind": "bool",
+      "label": "活动期间是否跳过养成计划"
+     },
+     "CultivateSkipDuringResourceCollection": {
+      "kind": "bool",
+      "label": "资源收集期是否跳过养成计划"
+     },
+     "CultivateSklandAccount": {
+      "kind": "str",
+      "label": "森空岛绑定：签到账号组 UUID（凭据引用，凭据本体只存签到域）"
+     },
+     "CultivateSklandUid": {
+      "kind": "str",
+      "label": "森空岛绑定：绑定角色的游戏 uid（非森空岛 userId）"
+     },
+     "CultivateTargets": {
+      "kind": "str",
+      "label": "干员养成目标",
+      "raw": "JsonListString"
+     },
+     "DepotMaintainPlans": {
+      "kind": "str",
+      "label": "库存保持计划（快速配置面板维护；MAA 侧同名 PlanList 为透传载体）",
+      "raw": "JsonListString"
+     },
+     "EventDepotMaintainPlans": {
+      "kind": "str",
+      "label": "活动库存保持计划，保存材料关序号及目标库存，运行时解析当前活动",
+      "raw": "JsonListString"
+     },
+     "IfActivityFirst": {
+      "kind": "bool",
+      "label": "活动期间是否优先刷活动关"
+     },
+     "IfAward": {
+      "kind": "bool",
+      "label": "是否领取奖励"
+     },
+     "IfCultivate": {
+      "kind": "bool",
+      "label": "是否干员养成"
+     },
+     "IfDepotMaintain": {
+      "kind": "bool",
+      "label": "是否库存保持"
+     },
+     "IfEventDepotMaintain": {
+      "kind": "bool",
+      "label": "是否启用活动关均衡理智"
+     },
+     "IfFight": {
+      "kind": "bool",
+      "label": "是否理智作战"
+     },
+     "IfGreenTicketStore": {
+      "kind": "bool",
+      "label": "是否每月自动购买一次绿票商店"
+     },
+     "IfInfrast": {
+      "kind": "bool",
+      "label": "是否基建换班"
+     },
+     "IfMall": {
+      "kind": "bool",
+      "label": "是否信用收支"
+     },
+     "IfRecruit": {
+      "kind": "bool",
+      "label": "是否公开招募"
+     },
+     "IfStartUp": {
+      "kind": "bool",
+      "label": "是否自动唤醒"
+     },
+     "IfSwitchTheme": {
+      "kind": "bool",
+      "label": "是否更换主题（主题名称在 MAA 侧配置，MAS 仅透传）"
+     },
+     "InfrastMode": {
+      "kind": "enum",
+      "label": "基建模式",
+      "options": [
+       "Normal",
+       "Rotation",
+       "Custom"
+      ]
+     },
+     "InfrastName": {
+      "kind": "str",
+      "label": "基建配置名称",
+      "raw": "Virtual[str]"
+     }
+    }
+   }
+  },
+  "MaaEndConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "MaaEndUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "enum",
+      "label": "上次代理状态",
+      "options": [
+       "未知",
+       "成功",
+       "失败"
+      ]
+     },
+     "PeriodTaskRecords": {
+      "kind": "json",
+      "label": "MaaEnd 每日任务完成记录，结构为 daily -> task name -> 日期"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaEndUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "用户ID"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "Resource": {
+      "kind": "enum",
+      "label": "资源名称",
+      "options": [
+       "官服"
+      ]
+     },
+     "SanityMode": {
+      "kind": "str",
+      "label": "理智任务配置模式",
+      "raw": "UUID | str"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "MaaEndUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "PushLogMode": {
+      "kind": "enum",
+      "label": "任务报告节点详情的推送模式（log_box 采集的关键节点）： 关闭 = 不采集；逐条 = 采集并逐条带回时间戳；汇总 = 采集并按状态聚合",
+      "options": [
+       "关闭",
+       "逐条",
+       "汇总"
+      ]
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaEndUserConfig.TaskFields",
+    "fields": {
+     "AutoCollectCommonRoutes": {
+      "kind": "str",
+      "label": "自动采集通用资源路线",
+      "raw": "Any"
+     },
+     "AutoCollectMode": {
+      "kind": "enum",
+      "label": "自动采集路线安排：分散或集中",
+      "options": [
+       "Distributed",
+       "Concentrated"
+      ]
+     },
+     "AutoCollectRoutes": {
+      "kind": "str",
+      "label": "自动采集区域资源路线",
+      "raw": "Any"
+     },
+     "AutoEssenceMenu": {
+      "kind": "enum",
+      "label": "基质刷取模式",
+      "options": [
+       "Random",
+       "Location",
+       "Target"
+      ]
+     },
+     "AutoEssenceSpecifiedLocation": {
+      "kind": "str",
+      "label": "基质刷取指定地点"
+     },
+     "AutoEssenceTargetWeapons": {
+      "kind": "list",
+      "label": "基质目标武器 ID 列表",
+      "itemKind": "str"
+     },
+     "CrisisDrills": {
+      "kind": "enum",
+      "label": "危境预演任务",
+      "options": [
+       "AdvancedProgression1",
+       "AdvancedProgression2",
+       "AdvancedProgression3",
+       "AdvancedProgression4",
+       "AdvancedProgression5"
+      ]
+     },
+     "DailyOnceTasks": {
+      "kind": "str",
+      "label": "每日正常完成一次后当天跳过的 MaaEnd 任务名列表（JSON 字符串）",
+      "raw": "JsonListString"
+     },
+     "IfAutoCollect": {
+      "kind": "bool",
+      "label": "自动采集"
+     },
+     "IfAutoEcoFarm": {
+      "kind": "bool",
+      "label": "生态农场"
+     },
+     "IfAutoSell": {
+      "kind": "bool",
+      "label": "售卖弹性物资"
+     },
+     "IfAutoStockStaple": {
+      "kind": "bool",
+      "label": "购买稳定物资"
+     },
+     "IfAutoStockpile": {
+      "kind": "bool",
+      "label": "自动囤货"
+     },
+     "IfAutoUseSpMedication": {
+      "kind": "bool",
+      "label": "应急理智加强剂"
+     },
+     "IfCreditShoppingN2": {
+      "kind": "bool",
+      "label": "信用点购物"
+     },
+     "IfDailyRewards": {
+      "kind": "bool",
+      "label": "日常奖励领取"
+     },
+     "IfDeliveryJobs": {
+      "kind": "bool",
+      "label": "转交委托"
+     },
+     "IfDijiangRewards": {
+      "kind": "bool",
+      "label": "基建任务"
+     },
+     "IfEnvironmentMonitoring": {
+      "kind": "bool",
+      "label": "环境监测"
+     },
+     "IfPullCountCalculator": {
+      "kind": "bool",
+      "label": "抽数计算"
+     },
+     "IfResourceRecycleStation": {
+      "kind": "bool",
+      "label": "资源回收站"
+     },
+     "IfSanity": {
+      "kind": "bool",
+      "label": "理智任务"
+     },
+     "IfSeizeDeliveryJobs": {
+      "kind": "bool",
+      "label": "抢委托送货"
+     },
+     "IfSellProduct": {
+      "kind": "bool",
+      "label": "售卖产品"
+     },
+     "IfTrialOfSwordmancy": {
+      "kind": "bool",
+      "label": "选剑演武"
+     },
+     "IfVisitFriends": {
+      "kind": "bool",
+      "label": "拜访好友"
+     },
+     "OperatorProgression": {
+      "kind": "enum",
+      "label": "干员养成任务",
+      "options": [
+       "OperatorEXP",
+       "Promotions",
+       "T-Creds",
+       "SkillUp"
+      ]
+     },
+     "RewardsSetOption": {
+      "kind": "enum",
+      "label": "奖励组选项",
+      "options": [
+       "RewardsSetA",
+       "RewardsSetB"
+      ]
+     },
+     "SanityTaskType": {
+      "kind": "enum",
+      "label": "理智任务类型",
+      "options": [
+       "OperatorProgression",
+       "WeaponProgression",
+       "CrisisDrills",
+       "Essence"
+      ]
+     },
+     "SeizeDeliveryJobsCommissionSource": {
+      "kind": "enum",
+      "label": "抢委托送货委托接收点",
+      "options": [
+       "Unlimited",
+       "WulingCity",
+       "TestArea"
+      ]
+     },
+     "SeizeDeliveryJobsReward": {
+      "kind": "float",
+      "label": "抢委托送货最低接取价格（万）"
+     },
+     "WeaponProgression": {
+      "kind": "enum",
+      "label": "武器养成任务",
+      "options": [
+       "WeaponEXP",
+       "WeaponTune"
+      ]
+     }
+    }
+   }
+  },
+  "SrcConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "SrcUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "SrcUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "用户 ID"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Server": {
+      "kind": "enum",
+      "label": "游戏服务器",
+      "options": [
+       "CN-Official",
+       "CN-Bilibili",
+       "VN-Official",
+       "OVERSEA-America",
+       "OVERSEA-Asia",
+       "OVERSEA-Europe",
+       "OVERSEA-TWHKMO"
+      ]
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "SrcUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Stage": {
+    "kind": "object",
+    "ref": "SrcUserConfig.StageFields",
+    "fields": {
+     "Channel": {
+      "kind": "enum",
+      "label": "关卡通道",
+      "options": [
+       "Relic",
+       "Materials",
+       "Ornament"
+      ]
+     },
+     "EchoOfWar": {
+      "kind": "enum",
+      "label": "历战余响关卡",
+      "options": [
+       "-",
+       "Echo_of_War_The_Comedy_of_Doom",
+       "Echo_of_War_Rusted_Crypt_of_the_Iron_Carcass",
+       "Echo_of_War_Glance_of_Twilight",
+       "Echo_of_War_Inner_Beast_Battlefield",
+       "Echo_of_War_Salutations_of_Ashen_Dreams",
+       "Echo_of_War_Borehole_Planet_Past_Nightmares",
+       "Echo_of_War_Divine_Seed",
+       "Echo_of_War_End_of_the_Eternal_Freeze",
+       "Echo_of_War_Destruction_Beginning"
+      ]
+     },
+     "ExtractReservedTrailblazePower": {
+      "kind": "bool",
+      "label": "使用储备开拓力"
+     },
+     "FuelReserve": {
+      "kind": "int",
+      "label": "保留的燃料数量"
+     },
+     "Materials": {
+      "kind": "enum",
+      "label": "材料关卡",
+      "options": [
+       "-",
+       "Calyx_Golden_Memories_Planarcadia",
+       "Calyx_Golden_Memories_Amphoreus",
+       "Calyx_Golden_Memories_Penacony",
+       "Calyx_Golden_Memories_The_Xianzhou_Luofu",
+       "Calyx_Golden_Memories_Jarilo_VI",
+       "Calyx_Golden_Aether_Planarcadia",
+       "Calyx_Golden_Aether_Amphoreus",
+       "Calyx_Golden_Aether_Penacony",
+       "Calyx_Golden_Aether_The_Xianzhou_Luofu",
+       "Calyx_Golden_Aether_Jarilo_VI",
+       "Calyx_Golden_Treasures_Planarcadia",
+       "Calyx_Golden_Treasures_Amphoreus",
+       "Calyx_Golden_Treasures_Penacony",
+       "Calyx_Golden_Treasures_The_Xianzhou_Luofu",
+       "Calyx_Golden_Treasures_Jarilo_VI",
+       "Calyx_Crimson_Destruction_Herta_StorageZone",
+       "Calyx_Crimson_Destruction_Luofu_ScalegorgeWaterscape",
+       "Calyx_Crimson_Destruction_Planarcadia_InkfordHermitage",
+       "Calyx_Crimson_Preservation_Herta_SupplyZone",
+       "Calyx_Crimson_Preservation_Penacony_ClockStudiosThemePark",
+       "Calyx_Crimson_The_Hunt_Jarilo_OutlyingSnowPlains",
+       "Calyx_Crimson_The_Hunt_Penacony_SoulGladScorchsandAuditionVenue",
+       "Calyx_Crimson_The_Hunt_Amphoreus_MemortisShoreRuinsofTime",
+       "Calyx_Crimson_Abundance_Jarilo_BackwaterPass",
+       "Calyx_Crimson_Abundance_Luofu_FyxestrollGarden",
+       "Calyx_Crimson_Erudition_Jarilo_RivetTown",
+       "Calyx_Crimson_Erudition_Penacony_PenaconyGrandTheater",
+       "Calyx_Crimson_Erudition_Planarcadia_SeafeldTVTower",
+       "Calyx_Crimson_Harmony_Jarilo_RobotSettlement",
+       "Calyx_Crimson_Harmony_Penacony_TheReverieDreamscape",
+       "Calyx_Crimson_Nihility_Jarilo_GreatMine",
+       "Calyx_Crimson_Nihility_Luofu_AlchemyCommission",
+       "Calyx_Crimson_Nihility_Amphoreus_RadiantScarwoodGroveofEpiphany",
+       "Calyx_Crimson_Remembrance_Amphoreus_StrifeRuinsCastrumKremnos",
+       "Calyx_Crimson_Elation_Planarcadia_WorldEndTavern",
+       "Stagnant_Shadow_Spike",
+       "Stagnant_Shadow_Perdition",
+       "Stagnant_Shadow_Duty",
+       "Stagnant_Shadow_Deepsheaf",
+       "Stagnant_Shadow_Blaze",
+       "Stagnant_Shadow_Scorch",
+       "Stagnant_Shadow_Roast",
+       "Stagnant_Shadow_Ire",
+       "Stagnant_Shadow_Ashes",
+       "Stagnant_Shadow_Rime",
+       "Stagnant_Shadow_Icicle",
+       "Stagnant_Shadow_Nectar",
+       "Stagnant_Shadow_Sirens",
+       "Stagnant_Shadow_Fulmination",
+       "Stagnant_Shadow_Doom",
+       "Stagnant_Shadow_Mechwolf",
+       "Stagnant_Shadow_Soundburst",
+       "Stagnant_Shadow_Gust",
+       "Stagnant_Shadow_Celestial",
+       "Stagnant_Shadow_Gloam",
+       "Stagnant_Shadow_Cinders",
+       "Stagnant_Shadow_Quanta",
+       "Stagnant_Shadow_Abomination",
+       "Stagnant_Shadow_Gelidmoon",
+       "Stagnant_Shadow_Devour",
+       "Stagnant_Shadow_Mirage",
+       "Stagnant_Shadow_Puppetry",
+       "Stagnant_Shadow_Timbre",
+       "Stagnant_Shadow_Sloggyre"
+      ]
+     },
+     "Ornament": {
+      "kind": "enum",
+      "label": "饰品关卡",
+      "options": [
+       "-",
+       "Divergent_Universe_Bugs_Incoming",
+       "Divergent_Universe_Gilded_Recollection",
+       "Divergent_Universe_Within_the_West_Wind",
+       "Divergent_Universe_Moonlit_Blood",
+       "Divergent_Universe_Unceasing_Strife",
+       "Divergent_Universe_Famished_Worker",
+       "Divergent_Universe_Eternal_Comedy",
+       "Divergent_Universe_To_Sweet_Dreams",
+       "Divergent_Universe_Pouring_Blades",
+       "Divergent_Universe_Fruit_of_Evil",
+       "Divergent_Universe_Permafrost",
+       "Divergent_Universe_Gentle_Words",
+       "Divergent_Universe_Smelted_Heart",
+       "Divergent_Universe_Untoppled_Walls"
+      ]
+     },
+     "Relic": {
+      "kind": "enum",
+      "label": "遗器关卡",
+      "options": [
+       "-",
+       "Cavern_of_Corrosion_Path_of_Insight",
+       "Cavern_of_Corrosion_Path_of_Possession",
+       "Cavern_of_Corrosion_Path_of_Hidden_Salvation",
+       "Cavern_of_Corrosion_Path_of_Thundersurge",
+       "Cavern_of_Corrosion_Path_of_Aria",
+       "Cavern_of_Corrosion_Path_of_Uncertainty",
+       "Cavern_of_Corrosion_Path_of_Cavalier",
+       "Cavern_of_Corrosion_Path_of_Dreamdive",
+       "Cavern_of_Corrosion_Path_of_Darkness",
+       "Cavern_of_Corrosion_Path_of_Elixir_Seekers",
+       "Cavern_of_Corrosion_Path_of_Conflagration",
+       "Cavern_of_Corrosion_Path_of_Holy_Hymn",
+       "Cavern_of_Corrosion_Path_of_Providence",
+       "Cavern_of_Corrosion_Path_of_Drifting",
+       "Cavern_of_Corrosion_Path_of_Jabbing_Punch",
+       "Cavern_of_Corrosion_Path_of_Gelid_Wind"
+      ]
+     },
+     "SimulatedUniverseWorld": {
+      "kind": "enum",
+      "label": "模拟宇宙关卡",
+      "options": [
+       "-",
+       "Simulated_Universe_World_3",
+       "Simulated_Universe_World_4",
+       "Simulated_Universe_World_5",
+       "Simulated_Universe_World_6",
+       "Simulated_Universe_World_8"
+      ]
+     },
+     "UseFuel": {
+      "kind": "bool",
+      "label": "使用燃料"
+     }
+    }
+   }
+  },
+  "HSRConfig": {
+   "Control": {
+    "kind": "object",
+    "ref": "HSRUserConfig.ControlFields",
+    "fields": {
+     "M7A": {
+      "kind": "bool",
+      "label": "原生来源时是否运行三月七"
+     },
+     "SRA": {
+      "kind": "bool",
+      "label": "原生来源（native）时运行哪几个引擎；都没勾时回落到已配置路径的引擎"
+     }
+    }
+   },
+   "Data": {
+    "kind": "object",
+    "ref": "HSRUserConfig.DataFields",
+    "fields": {
+     "EchoOfWarCompletedThisWeek": {
+      "kind": "bool",
+      "label": "本周是否已完成历战余响"
+     },
+     "EchoOfWarLastCompletionDate": {
+      "kind": "str",
+      "label": "历战余响最近一次完成日期",
+      "raw": "datetime"
+     },
+     "EchoOfWarLastResetWeek": {
+      "kind": "str",
+      "label": "历战余响上次重置 ISO 周（形如 \"2025-W23\"）"
+     },
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "M7ARedeemCodeFingerprint": {
+      "kind": "str",
+      "label": "M7A 兑换码指纹"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     },
+     "SRARedeemCodeFingerprint": {
+      "kind": "str",
+      "label": "兑换码状态指纹（仅状态信息，不保存兑换码明文）"
+     },
+     "WeeklyCompletedThisWeek": {
+      "kind": "bool",
+      "label": "本周是否已完成周常（仅依据 Data 字段判断）"
+     },
+     "WeeklyLastCompletionDate": {
+      "kind": "str",
+      "label": "周常（差分宇宙/货币战争）最近一次完成日期",
+      "raw": "datetime"
+     },
+     "WeeklyLastResetWeek": {
+      "kind": "str",
+      "label": "周常上次重置 ISO 周（形如 \"2025-W23\"）"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "HSRUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared/independent/native）：shared = 共用脚本级计划； independent = 本用户自己的计划；native = 原样运行 SRA / 三月七 当前的原生配置",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "用户 ID（账号）"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Server": {
+      "kind": "enum",
+      "label": "游戏服务器",
+      "options": [
+       "CN-Official"
+      ]
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息（虚拟字段，供前端显示）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Managed": {
+    "kind": "object",
+    "ref": "HSRUserConfig.ManagedFields",
+    "fields": {
+     "Options": {
+      "kind": "json",
+      "label": "托管任务选项 JSON"
+     },
+     "TaskMapping": {
+      "kind": "json",
+      "label": "托管任务映射 JSON"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "HSRUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Stage": {
+    "kind": "object",
+    "ref": "HSRUserConfig.StageFields",
+    "fields": {
+     "Channel": {
+      "kind": "enum",
+      "label": "体力关卡通道",
+      "options": [
+       "CalyxGolden",
+       "CalyxCrimson",
+       "Relic",
+       "Ornament"
+      ]
+     },
+     "ScriptEchoOfWar": {
+      "kind": "json",
+      "label": "历战余响脚本原生字段 JSON"
+     },
+     "ScriptStage": {
+      "kind": "json",
+      "label": "主刷关卡脚本原生字段 JSON"
+     }
+    }
+   },
+   "TaskOpt": {
+    "kind": "object",
+    "ref": "HSRUserConfig.TaskOptFields",
+    "fields": {
+     "EchoOfWarWeekday": {
+      "kind": "enum",
+      "label": "历战余响开始刷的星期（周一 ~ 周日）",
+      "options": [
+       "Monday",
+       "Tuesday",
+       "Wednesday",
+       "Thursday",
+       "Friday",
+       "Saturday",
+       "Sunday"
+      ]
+     }
+    }
+   },
+   "TaskSwitch": {
+    "kind": "object",
+    "ref": "HSRUserConfig.TaskSwitchFields",
+    "fields": {
+     "CurrencyWars": {
+      "kind": "bool",
+      "label": "货币战争模块开关"
+     },
+     "Daily": {
+      "kind": "bool",
+      "label": "日常模块开关"
+     },
+     "DivergentUniverse": {
+      "kind": "bool",
+      "label": "差分宇宙模块开关"
+     },
+     "ReceiveRewards": {
+      "kind": "bool",
+      "label": "领取奖励模块开关"
+     }
+    }
+   }
+  },
+  "MaaFWConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.DataFields",
+    "fields": {
+     "IfPassCheck": {
+      "kind": "bool",
+      "label": "是否通过检查"
+     },
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "str",
+      "label": "上次运行状态"
+     },
+     "PeriodTaskRecords": {
+      "kind": "json",
+      "label": "MaaFW 周期任务完成记录，结构为 weekly/monthly -> task name -> period key"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Device": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.DeviceFields",
+    "fields": {
+     "AdbAddress": {
+      "kind": "str",
+      "label": "当前用户覆盖 ADB 地址，留空时使用脚本级模拟器配置"
+     },
+     "HWnd": {
+      "kind": "int",
+      "label": "Win32 / Gamepad 窗口句柄，0 表示未指定"
+     },
+     "PlayCoverAddress": {
+      "kind": "str",
+      "label": "PlayCover 地址"
+     },
+     "PlayCoverUuid": {
+      "kind": "str",
+      "label": "PlayCover UUID"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.InfoFields",
+    "fields": {
+     "Account": {
+      "kind": "str",
+      "label": "账号信息，仅用于 AUTO-MAS 记录，不自动传入 MaaFW 任务"
+     },
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Controller": {
+      "kind": "str",
+      "label": "MaaFW controller 名称，留空时按 interface 和设备配置自动选择"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码信息，仅用于 AUTO-MAS 记录，不自动传入 MaaFW 任务"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "MaaFW resource 名称，留空时选择匹配 controller 的第一个 resource"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.TaskFields",
+    "fields": {
+     "SelectedPreset": {
+      "kind": "str",
+      "label": "当前选中的 interface preset 名称，留空时使用 interface 默认逻辑"
+     },
+     "TaskSnapshot": {
+      "kind": "json",
+      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
+     }
+    }
+   }
+  },
+  "M9AConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.DataFields",
+    "fields": {
+     "IfPassCheck": {
+      "kind": "bool",
+      "label": "是否通过检查"
+     },
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "str",
+      "label": "上次运行状态"
+     },
+     "PeriodTaskRecords": {
+      "kind": "json",
+      "label": "MaaFW 周期任务完成记录，结构为 weekly/monthly -> task name -> period key"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Device": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.DeviceFields",
+    "fields": {
+     "AdbAddress": {
+      "kind": "str",
+      "label": "当前用户覆盖 ADB 地址，留空时使用脚本级模拟器配置"
+     },
+     "HWnd": {
+      "kind": "int",
+      "label": "Win32 / Gamepad 窗口句柄，0 表示未指定"
+     },
+     "PlayCoverAddress": {
+      "kind": "str",
+      "label": "PlayCover 地址"
+     },
+     "PlayCoverUuid": {
+      "kind": "str",
+      "label": "PlayCover UUID"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.InfoFields",
+    "fields": {
+     "Account": {
+      "kind": "str",
+      "label": "账号信息，仅用于 AUTO-MAS 记录，不自动传入 MaaFW 任务"
+     },
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Controller": {
+      "kind": "str",
+      "label": "MaaFW controller 名称，留空时按 interface 和设备配置自动选择"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码信息，仅用于 AUTO-MAS 记录，不自动传入 MaaFW 任务"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "MaaFW resource 名称，留空时选择匹配 controller 的第一个 resource"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.TaskFields",
+    "fields": {
+     "SelectedPreset": {
+      "kind": "str",
+      "label": "当前选中的 interface preset 名称，留空时使用 interface 默认逻辑"
+     },
+     "TaskSnapshot": {
+      "kind": "json",
+      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
+     }
+    }
+   }
+  },
+  "MSSConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "MSSUserConfig.DataFields",
+    "fields": {
+     "IfPassCheck": {
+      "kind": "bool",
+      "label": "是否通过检查"
+     },
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "str",
+      "label": "上次运行状态"
+     },
+     "PeriodTaskRecords": {
+      "kind": "json",
+      "label": "MaaFW 周期任务完成记录，结构为 weekly/monthly -> task name -> period key"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     },
+     "PersonalMssDefense": {
+      "kind": "json",
+      "label": "个人版「灾变防线」的编排记录，形如 {\"armed\": 期, \"done\": 期}。 armed 是上次把它编进队列的那一期，done 是已经确认打完的那一期： 用「上次运行是否成功」把 armed 升成 done，所以跑失败的那期下次还会重试。 期取活动公告的开始时刻（见 app/tools/stella_official.py），跨月也认得出是同一期。"
+     }
+    }
+   },
+   "Device": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.DeviceFields",
+    "fields": {
+     "AdbAddress": {
+      "kind": "str",
+      "label": "当前用户覆盖 ADB 地址，留空时使用脚本级模拟器配置"
+     },
+     "HWnd": {
+      "kind": "int",
+      "label": "Win32 / Gamepad 窗口句柄，0 表示未指定"
+     },
+     "PlayCoverAddress": {
+      "kind": "str",
+      "label": "PlayCover 地址"
+     },
+     "PlayCoverUuid": {
+      "kind": "str",
+      "label": "PlayCover UUID"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MSSUserConfig.InfoFields",
+    "fields": {
+     "Account": {
+      "kind": "str",
+      "label": "账号信息，仅用于 AUTO-MAS 记录，不自动传入 MaaFW 任务"
+     },
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Controller": {
+      "kind": "str",
+      "label": "MaaFW controller 名称，留空时按 interface 和设备配置自动选择"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码信息，仅用于 AUTO-MAS 记录，不自动传入 MaaFW 任务"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "MaaFW resource 名称，留空时选择匹配 controller 的第一个 resource"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     },
+     "IfActivityFirst": {
+      "kind": "bool",
+      "label": "活动优先：队列里没加「活动快速战斗」时，确认在活动期也自动加入，排在悬赏试炼之前"
+     },
+     "PlanMode": {
+      "kind": "str",
+      "label": "悬赏试炼关卡来源：Fixed 用任务队列里配的，选了计划表就按当天槽位改",
+      "raw": "UUID | str"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaFWUserConfig.TaskFields",
+    "fields": {
+     "SelectedPreset": {
+      "kind": "str",
+      "label": "当前选中的 interface preset 名称，留空时使用 interface 默认逻辑"
+     },
+     "TaskSnapshot": {
+      "kind": "json",
+      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
+     }
+    }
+   }
+  },
+  "GeneralConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "GeneralUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "GeneralUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "IfUseMasConfig": {
+      "kind": "bool",
+      "label": "兼容旧版用户独立脚本配置"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "GeneralUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   }
+  },
+  "OkwwConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "OkwwUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "enum",
+      "label": "上次代理状态（未知/成功/失败）",
+      "options": [
+       "未知",
+       "成功",
+       "失败",
+       "维护中"
+      ]
+     },
+     "LastTaskIndex": {
+      "kind": "int",
+      "label": "上次运行的 ok-ww 任务序号（-t N）"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "OkwwUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享、independent=独立、native=脚本原生配置）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "账号"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用 MAS 快速配置覆盖高频任务字段"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "Resource": {
+      "kind": "enum",
+      "label": "游戏资源",
+      "options": [
+       "官服",
+       "国际服"
+      ]
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "用户状态"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签列表（JSON字符串，TagItem的dict列表）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "OkwwUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用用户通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送用户统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "PushLogMode": {
+      "kind": "enum",
+      "label": "任务报告节点详情的推送模式（log_box 采集的关键节点）： 关闭 = 不采集；逐条 = 采集并逐条带回时间戳；汇总 = 采集并按状态聚合",
+      "options": [
+       "关闭",
+       "逐条",
+       "汇总"
+      ]
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "用户收件地址"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "OkwwUserConfig.TaskFields",
+    "fields": {
+     "AdditionalTasks": {
+      "kind": "list",
+      "label": "每日任务后运行的附加任务",
+      "itemKind": "enum",
+      "itemOptions": [
+       "Check Weekly Garden",
+       "Auto Farm all Nightmare Nest",
+       "Merge Echo If discarded > 1000",
+       "Teleport and Farm 4C Echo"
+      ]
+     },
+     "FarmNightmareNestForDailyEcho": {
+      "kind": "bool",
+      "label": "使用梦魇巢穴完成日常声骸"
+     },
+     "MaterialSelection": {
+      "kind": "enum",
+      "label": "模拟领域材料",
+      "options": [
+       "Resonator EXP",
+       "Weapon EXP",
+       "Shell Credit"
+      ]
+     },
+     "WhichForgeryChallengeToFarm": {
+      "kind": "int",
+      "label": "凝素领域序号"
+     },
+     "WhichTacetSuppressionToFarm": {
+      "kind": "int",
+      "label": "无音区序号"
+     },
+     "WhichToFarm": {
+      "kind": "enum",
+      "label": "MAS 仅接管 DailyTask 及 DailyTask 高频设置；账号切换由 MAS 侧 account_switch 实现，不再暴露上游 MultiAccountDailyTask。 每日任务体力用途",
+      "options": [
+       "Tacet Suppression",
+       "Forgery Challenge",
+       "Simulation Challenge"
+      ]
+     }
+    }
+   }
+  },
+  "OkNteConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "OkNteUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "enum",
+      "label": "上次代理状态（未知/成功/失败）",
+      "options": [
+       "未知",
+       "成功",
+       "失败",
+       "维护中"
+      ]
+     },
+     "LastTaskIndex": {
+      "kind": "int",
+      "label": "上次运行的 ok-nte 任务序号（-t N）"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "OkNteUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享、independent=独立、native=脚本原生配置）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "账号"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "Resource": {
+      "kind": "enum",
+      "label": "游戏资源",
+      "options": [
+       "官服"
+      ]
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "用户状态"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签列表（JSON字符串，TagItem的dict列表）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "OkNteUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件通知"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否使用Server酱推送"
+     },
+     "PushLogMode": {
+      "kind": "enum",
+      "label": "任务报告节点详情的推送模式（log_box 采集的关键节点）： 关闭 = 不采集；逐条 = 采集并逐条带回时间戳；汇总 = 采集并按状态聚合",
+      "options": [
+       "关闭",
+       "逐条",
+       "汇总"
+      ]
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "ServerChanKey"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "邮件接收地址"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "OkNteUserConfig.TaskFields",
+    "fields": {
+     "ExitOnFinish": {
+      "kind": "bool",
+      "label": "任务结束后退出（-e）"
+     },
+     "TaskIndex": {
+      "kind": "int",
+      "label": "ok-nte.exe -t N -e；新版上游 DailyRoutineTask 是 -t 2"
+     }
+    }
+   }
+  },
+  "BetterGIConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "BetterGIUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "enum",
+      "label": "上次代理状态（未知/成功/失败）",
+      "options": [
+       "未知",
+       "成功",
+       "失败",
+       "维护中"
+      ]
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "BetterGIUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "Id": {
+      "kind": "str",
+      "label": "账号"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "IfUseMasConfig": {
+      "kind": "bool",
+      "label": "兼容旧版用户独立一条龙配置"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "密码"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "用户状态"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签列表（JSON字符串，TagItem的dict列表）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "BetterGIUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用用户通知"
+     },
+     "IfSendDropStatistics": {
+      "kind": "bool",
+      "label": "是否统计掉落（BGI「奖励识别」）：默认开启；开启后运行前强制打开奖励识别， 并把日志里的逐轮识别结果汇总进统计通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送用户统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "PushLogMode": {
+      "kind": "enum",
+      "label": "任务报告节点详情的推送模式（一条龙/执行层分步表）： 关闭 = 不注入；逐条 = 逐条带回时间戳；汇总 = 按状态聚合",
+      "options": [
+       "关闭",
+       "逐条",
+       "汇总"
+      ]
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "用户收件地址"
+     }
+    }
+   },
+   "OneDragon": {
+    "kind": "object",
+    "ref": "BetterGIUserConfig.OneDragonFields",
+    "fields": {
+     "AutoBossStrategyName": {
+      "kind": "str",
+      "label": "战斗策略（对应 BetterGI 一条龙的 AutoBossStrategyName，留空不覆盖） 默认「根据队伍自动选择」为 BetterGI 内置策略名"
+     },
+     "CustomGroups": {
+      "kind": "str",
+      "label": "自定义配置组列表：JSON 数组字符串，元素为 {\"name\": str, \"enabled\": bool}",
+      "raw": "JsonListString"
+     },
+     "DailyRewardPartyName": {
+      "kind": "str",
+      "label": "领取奖励队伍（对应 BetterGI 一条龙的 DailyRewardPartyName，留空不覆盖）"
+     },
+     "Groups": {
+      "kind": "list",
+      "label": "一条龙要执行的内置配置组（按组名，默认全部 8 组开启）",
+      "itemKind": "str"
+     },
+     "IfUseCustomGroups": {
+      "kind": "bool",
+      "label": "是否管理自定义配置组（总开关；OFF 时沿 BetterGI 原生设置，自定义组原样保留）"
+     },
+     "IfUseTeams": {
+      "kind": "bool",
+      "label": "「队伍配置」总开关（胶囊开关）：ON 时表格内队伍参与运行时「战斗场景」选队； OFF 时数据保留但不参与匹配（通用队伍 PartyName/AutoBossStrategyName 照旧生效）。"
+     },
+     "PartyName": {
+      "kind": "str",
+      "label": "战斗队伍（对应 BetterGI 一条龙的通用 PartyName，留空不覆盖）"
+     },
+     "Plan": {
+      "kind": "str",
+      "label": "一条龙执行计划（Plan）JSON 字符串：{version, steps:[{uid,kind,name,enabled,settings}]}。 战斗 4 项（自动秘境/自动地脉花/自动幽境危战/自动首领讨伐）直连执行层时由本字段 承载其 per-任务参数；右栏对应设置仅写入本字段（不落原生一条龙配置）。"
+     },
+     "Queue": {
+      "kind": "str",
+      "label": "一条龙队列（可视化编排）：JSON 数组字符串，按执行顺序存储，元素为 {\"kind\": str, \"name\": str}（kind ∈ builtin/js/pathing/scriptgroup/custom， 内置组名命中时后端强制 builtin）。仅表达顺序与成员（含同名重复实例）， 行启停仍由 Groups / CustomGroups 承载；为空或非法时回退旧行为 （按副本 TaskOrder 相对顺序，不重排）。",
+      "raw": "JsonListString"
+     },
+     "Teams": {
+      "kind": "str",
+      "label": "队伍配置表：JSON 数组字符串，数组顺序即界面展示顺序（可拖拽重排），元素为 {\"name\": str,            # 队伍名称（游戏内队伍名） \"strategy\": str,        # 战斗策略名（留空 = 跟随通用策略 AutoBossStrategyName） \"scenes\": {             # 战斗场景（可跨标签页任意叠加，空则本行不参与匹配） \"domain\": [{\"region\": str, \"domain\": str, \"reward\": str}],   # 秘境：地区/秘境名/奖励档 \"leyline\": [{\"country\": str, \"type\": str}],                  # 地脉花：地区/地脉类型 \"boss\": [{\"region\": str, \"boss\": str}]},                     # 首领讨伐：地区/首领名 \"note\": str,            # 备注 \"enabled\": bool}        # 启用状态 序号 0 的「通用队伍」不落本字段（直绑 PartyName / AutoBossStrategyName）。 运行期由 team_resolver 按 L1 精确匹配 + 随机选取，写入 Plan 步骤的 masTeamOverride / masStrategyOverride（最高优先级，压过每周行与步骤级字段）。",
+      "raw": "JsonListString"
+     },
+     "UseExecutionLayer": {
+      "kind": "bool",
+      "label": "是否启用「直连执行层」：战斗 4 项由 MAS 自编排 Plan 驱动（按需求恒开，预留开关）。"
+     }
+    }
+   },
+   "Switch": {
+    "kind": "object",
+    "ref": "BetterGIUserConfig.SwitchFields",
+    "fields": {
+     "GamePath": {
+      "kind": "str",
+      "label": "游戏客户端路径（用户级覆盖，可空）：官服/B服/国际服是三个互相隔离的客户端， B站账号只能登录B服客户端。留空 = 跟随 BetterGI 全局配置的游戏路径；填写后该 用户运行时由 MAS 按此路径临时拉起游戏（不修改 BetterGI 配置），实现同脚本 混服用户各用各的客户端",
+      "raw": "FilePath"
+     },
+     "Resource": {
+      "kind": "enum",
+      "label": "切换账号配置（BetterGI「切换账号多模式」脚本专项适配） 账号/密码复用 Info.Id / Info.Password（密码经 EncryptValidator 加密） 切换模式不再由用户配置，运行时按密码是否填写推断： 填密码 → 「账号+密码+OCR」，未填 → 「下拉列表」；B服 强制「B服切换另一个账号匹配+键鼠」。 游戏服务器（账号所在服务器：官服/B服/国际服各服务器）",
+      "options": [
+       "官服",
+       "B服",
+       "亚服",
+       "欧服",
+       "美服",
+       "港澳台服"
+      ]
+     },
+     "Uid": {
+      "kind": "str",
+      "label": "账号 UID（可不填，切换前识别一致将不执行切换动作；仅 BetterGI 脚本方式生效）"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "BetterGIUserConfig.TaskFields",
+    "fields": {
+     "OneDragonConfigName": {
+      "kind": "str",
+      "label": "BetterGI「一条龙」配置名，对应脚本一条龙页面中已保存的配置名称"
+     }
+    }
+   }
+  },
+  "ZzzOdConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "ZzzOdUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "enum",
+      "label": "上次代理状态（未知/成功/失败）",
+      "options": [
+       "未知",
+       "成功",
+       "失败"
+      ]
+     },
+     "LauncherLastGood": {
+      "kind": "enum",
+      "label": "智能启动器模式最近一次成功运行的启动器（\"\"=尚未记录；下次智能优先用它）",
+      "options": [
+       "",
+       "原始",
+       "集成"
+      ]
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Game": {
+    "kind": "object",
+    "ref": "ZzzOdUserConfig.GameFields",
+    "fields": {
+     "Account": {
+      "kind": "str",
+      "label": "登录账号（手机号/邮箱；留空沿用 zzz-od 已保存的登录态）"
+     },
+     "BilibiliAccountName": {
+      "kind": "str",
+      "label": "B服登录账号名"
+     },
+     "CustomWinTitle": {
+      "kind": "str",
+      "label": "自定义窗口标题"
+     },
+     "Dx12": {
+      "kind": "bool",
+      "label": "DX12 启动（MAS 便捷开关：注入时把 -use-d3d12 合并进一条龙的 launch_argument_advance；上游无独立字段，勾选框是唯一权威）"
+     },
+     "FullScreen": {
+      "kind": "enum",
+      "label": "全屏模式（上游枚举原值为字符串：'0'=窗口化 '1'=全屏）",
+      "options": [
+       "0",
+       "1"
+      ]
+     },
+     "GameLanguage": {
+      "kind": "enum",
+      "label": "游戏界面语言",
+      "options": [
+       "cn",
+       "en"
+      ]
+     },
+     "GamePath": {
+      "kind": "str",
+      "label": "游戏 exe 完整路径（ZenlessZoneZero.exe）",
+      "raw": "FilePath"
+     },
+     "GameRegion": {
+      "kind": "enum",
+      "label": "游戏区服（zzz-od game_account.yml 的 game_region 取值）",
+      "options": [
+       "cn",
+       "cn_b",
+       "us",
+       "eu",
+       "asia",
+       "twhkmo"
+      ]
+     },
+     "LaunchArgument": {
+      "kind": "bool",
+      "label": "一条龙游戏启动参数（game.yml 六字段，照抄上游 BasicGameConfig 默认值与取值；一条龙启动游戏时消费，总开关关闭则全部不生效）： 启动参数总开关"
+     },
+     "LaunchArgumentAdvance": {
+      "kind": "str",
+      "label": "高级参数（原样透传给一条龙拼接，上游不解析，不做 shlex 校验）"
+     },
+     "Monitor": {
+      "kind": "enum",
+      "label": "显示器序号（上游枚举原值为字符串）",
+      "options": [
+       "1",
+       "2",
+       "3",
+       "4"
+      ]
+     },
+     "Password": {
+      "kind": "str",
+      "label": "登录密码（DPAPI 加密落盘，注入/回读写 game_account.yml 时经 get/set 自动加解密）"
+     },
+     "Platform": {
+      "kind": "enum",
+      "label": "游戏平台（上游枚举 GamePlatformEnum.PC 的真实值为大写 'PC'）",
+      "options": [
+       "PC"
+      ]
+     },
+     "PopupWindow": {
+      "kind": "bool",
+      "label": "无边框窗口（一条龙拼参时转 -popupwindow）"
+     },
+     "ScreenSize": {
+      "kind": "enum",
+      "label": "窗口尺寸（上游枚举原值）",
+      "options": [
+       "1920x1080",
+       "2560x1440",
+       "3840x2160"
+      ]
+     },
+     "UseCustomWinTitle": {
+      "kind": "bool",
+      "label": "是否使用自定义窗口标题"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "ZzzOdUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（已封锁，仅保留字段兼容存量数据：原生来源在 load/update 归一为关，共享/独立来源不消费本开关）"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "LauncherMode": {
+      "kind": "enum",
+      "label": "一条龙启动器选择（原生/独立两态通用）： 自动 = 优先用「上次成功」的启动器，启动失败自动换另一个重试并记住下一次 成功的那个；原始/集成 = 固定用对应启动器（对应 exe 未安装时回退可用项）",
+      "options": [
+       "自动",
+       "原始",
+       "集成"
+      ]
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "SlotIdx": {
+      "kind": "int",
+      "label": "绑定的 zzz-od 实例槽下标（运行/配置会话内临时合成视图写回原生配置，非持久注册）：-1=未分配，首次运行或 「在一条龙内配置」时自动分配空闲 idx 并锁定该槽至会话结束， 此后配置会话与运行时注入都固定使用该槽。新槽从 MAS_SLOT_BASE（1001）起， 退到一条龙「升序找最小空号」够不到的高位段（上限 9999 与之一致放宽）"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "用户状态"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签列表（JSON字符串，TagItem的dict列表）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "ZzzOdUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用用户通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送用户统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "PushLogMode": {
+      "kind": "enum",
+      "label": "任务报告节点详情的推送模式（运行记录 diff 出的各任务结果）： 关闭 = 不采集；逐条 = 逐条带回时间戳；汇总 = 按状态聚合",
+      "options": [
+       "关闭",
+       "逐条",
+       "汇总"
+      ]
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "用户收件地址"
+     }
+    }
+   },
+   "OneDragon": {
+    "kind": "object",
+    "ref": "ZzzOdUserConfig.OneDragonFields",
+    "fields": {
+     "AfterDone": {
+      "kind": "enum",
+      "label": "游戏结束后操作（仅 MAS 拉起的一条龙运行消费：CLI 传参 --close-game / --shutdown 60；无=不传参，游戏保持运行。 与一条龙原生 GUI 的「结束后」下拉无关——原生 after_done 只在 从 GUI 内启动运行时被消费，CLI 路径不读它）",
+      "options": [
+       "无",
+       "关闭游戏",
+       "关机"
+      ]
+     },
+     "AppList": {
+      "kind": "str",
+      "label": "一条龙任务编排（JSON 数组字符串 [{\"app_id\": \"...\", \"enabled\": true}, ...]， 数组顺序即执行顺序；enabled=false 的任务由 zzz-od 跳过）"
+     }
+    }
+   }
+  },
+  "BAAHConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "BAAHUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "BAAHUserConfig.InfoFields",
+    "fields": {
+     "ActivityLineType": {
+      "kind": "enum",
+      "label": "活动排期按哪个服判断，供「活动关优先」使用（Kivo 时间轴的原文拼写：JP / Globle / CN）",
+      "options": [
+       "JP",
+       "Globle",
+       "CN"
+      ]
+     },
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源（shared=共享/independent=独立/native=原生）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "ConfigName": {
+      "kind": "str",
+      "label": "默认使用的 BAAH 配置文件名（BAAH_CONFIGS 目录下的文件名，不含 .json 后缀）"
+     },
+     "IfEventFirst": {
+      "kind": "bool",
+      "label": "活动期间自动把「活动关卡」任务排到最前并打开"
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用快速配置（与配置来源独立，按用户保存）"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名称",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "StageMode": {
+      "kind": "str",
+      "label": "关卡计划表；Fixed 表示按脚本配置",
+      "raw": "UUID | str"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "是否启用"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签信息",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "BAAHUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   }
+  },
+  "WhimboxConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "WhimboxUserConfig.DataFields",
+    "fields": {
+     "LastProxyDate": {
+      "kind": "str",
+      "label": "上次代理日期",
+      "raw": "datetime"
+     },
+     "LastProxyStatus": {
+      "kind": "enum",
+      "label": "上次代理状态（未知/成功/失败）",
+      "options": [
+       "未知",
+       "成功",
+       "失败"
+      ]
+     },
+     "ProxyTimes": {
+      "kind": "int",
+      "label": "代理次数"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "WhimboxUserConfig.InfoFields",
+    "fields": {
+     "Base": {
+      "kind": "enum",
+      "label": "base 来源三态（shared=共享/independent=独立/native=原生）：共享/独立= 用 MAS 面板配置（当前运行行为一致，为后续特殊功能预留），原生=直接用奇想盒 自带配置（MAS 零写入）",
+      "options": [
+       "shared",
+       "independent",
+       "native"
+      ]
+     },
+     "IfQuickConfig": {
+      "kind": "bool",
+      "label": "是否启用覆写层（快速配置，与来源独立，按账号保存，默认关）：开启时原生态 也会在任务前把面板覆盖集写入奇想盒（overlay，任务结束还原）；共享/独立态 面板本就是 base 来源，开关暂无额外消费点，为后续特殊功能预留。默认关保证 「原生=零写入」与 _write_config_or_hint 报错里「切原生绕开写入」的出路成立"
+     },
+     "IfScriptAfterTask": {
+      "kind": "bool",
+      "label": "是否在任务后执行脚本"
+     },
+     "IfScriptBeforeTask": {
+      "kind": "bool",
+      "label": "是否在任务前执行脚本"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "用户名",
+      "raw": "WindowsNameString"
+     },
+     "Notes": {
+      "kind": "str",
+      "label": "备注"
+     },
+     "RemainedDay": {
+      "kind": "int",
+      "label": "剩余天数"
+     },
+     "ScriptAfterTask": {
+      "kind": "str",
+      "label": "任务后脚本路径",
+      "raw": "FilePath"
+     },
+     "ScriptBeforeTask": {
+      "kind": "str",
+      "label": "任务前脚本路径",
+      "raw": "FilePath"
+     },
+     "Status": {
+      "kind": "bool",
+      "label": "用户状态"
+     },
+     "Tag": {
+      "kind": "str",
+      "label": "用户标签列表（JSON字符串，TagItem的dict列表）",
+      "raw": "Virtual[str]"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "WhimboxUserConfig.NotifyFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用用户通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送用户统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "用户收件地址"
+     }
+    }
+   },
+   "OneDragon": {
+    "kind": "object",
+    "ref": "WhimboxUserConfig.OneDragonFields",
+    "fields": {
+     "IfRunAllAccounts": {
+      "kind": "bool",
+      "label": "一条龙是否循环全部游戏账号（物化为上游 OneDragon.change_account； 账号列表由奇想盒运行期 OCR 动态发现，MAS 不做账号定向）"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "WhimboxUserConfig.TaskFields",
+    "fields": {
+     "Options": {
+      "kind": "json",
+      "label": "目标/参数覆盖集：JSON map {键: 值}，键集来自任务目录 （上游 OneDragon 节托管字段），只存用户显式选择的值"
+     },
+     "Tasks": {
+      "kind": "json",
+      "label": "步骤开关覆盖集：JSON map {步骤键: bool}，键集来自任务目录 （上游 OneDragonDefaultSteps 节），只存用户勾选结果"
+     }
+    }
+   }
+  }
+ },
+ "script": {
+  "MaaConfig": {
+   "Emulator": {
+    "kind": "object",
+    "ref": "MaaConfig.EmulatorFields",
+    "fields": {
+     "Id": {
+      "kind": "str",
+      "label": "模拟器 ID",
+      "raw": "UUID | str"
+     },
+     "Index": {
+      "kind": "str",
+      "label": "模拟器索引"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "MAA 脚本名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "MAA 路径",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "MaaConfig.RunFields",
+    "fields": {
+     "AnnihilationTimeLimit": {
+      "kind": "int",
+      "label": "剿灭时间限制（分钟）"
+     },
+     "GameUpdateTimeLimit": {
+      "kind": "int",
+      "label": "游戏更新时间限制（分钟）"
+     },
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "IfAutoInstallGameApk": {
+      "kind": "bool",
+      "label": "是否允许自动下载并安装游戏安装包（仅官服）"
+     },
+     "IfCheckGameUpdate": {
+      "kind": "bool",
+      "label": "是否在启动 MAA 前检查游戏更新"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "代理次数限制"
+     },
+     "RoutineTimeLimit": {
+      "kind": "int",
+      "label": "日常时间限制（分钟）"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制"
+     },
+     "TaskTransitionMethod": {
+      "kind": "enum",
+      "label": "任务切换方式",
+      "options": [
+       "NoAction",
+       "ExitGame",
+       "ExitEmulator"
+      ]
+     }
+    }
+   },
+   "Update": {
+    "kind": "object",
+    "ref": "MaaConfig.UpdateFields",
+    "fields": {
+     "TakeoverMigrationVersion": {
+      "kind": "int",
+      "label": "更新接管一次性迁移版本",
+      "default": 1
+     },
+     "MirrorChyanCDK": {
+      "kind": "str",
+      "label": "本脚本的 Mirror 酱 CDK（加密存储，留空回退 MAS 全局配置）"
+     },
+     "TakeoverEnabled": {
+      "kind": "bool",
+      "label": "是否接管 MAA 本体与资源更新（关=完全由 MAA 自行处理）"
+     }
+    }
+   }
+  },
+  "MaaEndConfig": {
+   "Game": {
+    "kind": "object",
+    "ref": "MaaEndConfig.GameFields",
+    "fields": {
+     "LaunchMode": {
+      "kind": "enum",
+      "label": "游戏启动方式，Client 为历史迁移值",
+      "default": "Launcher",
+      "options": [
+       "Client",
+       "Launcher",
+       "MAS",
+       "MaaEnd"
+      ]
+     },
+     "Arguments": {
+      "kind": "str",
+      "label": "终末地游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "CloseOnFinish": {
+      "kind": "bool",
+      "label": "结束后是否关闭游戏"
+     },
+     "ControllerType": {
+      "kind": "str",
+      "label": "控制器类型"
+     },
+     "EmulatorId": {
+      "kind": "str",
+      "label": "模拟器 ID",
+      "raw": "UUID | str"
+     },
+     "EmulatorIndex": {
+      "kind": "str",
+      "label": "模拟器索引"
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "是否在任务启动前检查并自动更新终末地 PC 客户端"
+     },
+     "LauncherPath": {
+      "kind": "str",
+      "label": "鹰角官方启动器路径（Launcher.exe 或 Games.exe）",
+      "raw": "FilePath"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "终末地游戏路径",
+      "raw": "FilePath"
+     },
+     "RestoreDisplayType": {
+      "kind": "enum",
+      "label": "关闭游戏时恢复的显示模式，与具体分辨率独立配置",
+      "options": [
+       "Window",
+       "Fullscreen"
+      ]
+     },
+     "RestoreResolution": {
+      "kind": "enum",
+      "label": "关闭游戏时恢复分辨率；Original 复用启动前读取的注册表值",
+      "options": [
+       "Off",
+       "Original",
+       "1920x1080",
+       "2560x1440",
+       "3840x2160",
+       "Custom"
+      ]
+     },
+     "RestoreResolutionHeight": {
+      "kind": "int",
+      "label": "自定义恢复分辨率高度"
+     },
+     "RestoreResolutionWidth": {
+      "kind": "int",
+      "label": "自定义恢复分辨率宽度"
+     },
+     "SetResolution": {
+      "kind": "bool",
+      "label": "是否在启动游戏时执行 MaaEnd 分辨率设置预任务"
+     },
+     "UpdateTimeLimit": {
+      "kind": "int",
+      "label": "游戏客户端更新时长限制（分钟）"
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "等待时间（秒）"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaEndConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "MaaEnd 脚本名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "MaaEnd 路径",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "MaaEndConfig.RunFields",
+    "fields": {
+     "AccountSwitchMethod": {
+      "kind": "enum",
+      "label": "账号切换方式（默认使用 MAAEND，MAS 为兼容入口）",
+      "options": [
+       "MAS",
+       "MAAEND"
+      ]
+     },
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "每日代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "运行超时阈值"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制"
+     },
+     "TaskTransitionMethod": {
+      "kind": "enum",
+      "label": "任务切换方式",
+      "options": [
+       "NoAction",
+       "ExitGame"
+      ]
+     }
+    }
+   }
+  },
+  "SrcConfig": {
+   "Emulator": {
+    "kind": "object",
+    "ref": "SrcConfig.EmulatorFields",
+    "fields": {
+     "Id": {
+      "kind": "str",
+      "label": "模拟器 ID",
+      "raw": "UUID | str"
+     },
+     "Index": {
+      "kind": "str",
+      "label": "模拟器索引"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "SrcConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "SRC 脚本名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "SRC 路径",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "SrcConfig.RunFields",
+    "fields": {
+     "GameUpdateTimeLimit": {
+      "kind": "int",
+      "label": "游戏更新时间限制（分钟）"
+     },
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "IfAutoInstallGameApk": {
+      "kind": "bool",
+      "label": "版本落后时是否由 MAS 自动下载并安装安装包"
+     },
+     "IfCheckGameUpdate": {
+      "kind": "bool",
+      "label": "是否在登录游戏前检查游戏更新"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "运行时间限制（分钟）"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制"
+     },
+     "TaskTransitionMethod": {
+      "kind": "enum",
+      "label": "任务切换方式",
+      "options": [
+       "ExitGame",
+       "ExitEmulator"
+      ]
+     }
+    }
+   }
+  },
+  "HSRConfig": {
+   "Cloud": {
+    "kind": "object",
+    "ref": "HSRConfig.CloudFields",
+    "fields": {
+     "LastLogin": {
+      "kind": "json",
+      "label": "各用户最近一次确认已登录的时间（user_id → ISO 时间），只读展示用， 由运行结束后的写回与「登录云游戏」接口维护"
+     },
+     "LoginTimeoutMinutes": {
+      "kind": "int",
+      "label": "等待用户在浏览器窗口里手动登录的时间（分钟）"
+     },
+     "MaxQueueMinutes": {
+      "kind": "int",
+      "label": "最长排队时间（分钟），同时计入每个模块的超时预算"
+     },
+     "UsePaidTime": {
+      "kind": "bool",
+      "label": "云·星穹铁道（Game.Platform = Cloud）专用，映射到三月七的 cloud_game_* 键 是否允许消耗付费时长走快速排队通道（花钱的开关，默认关）"
+     }
+    }
+   },
+   "Game": {
+    "kind": "object",
+    "ref": "HSRConfig.GameFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否由 MAS 管理游戏启停、进程监测和窗口操作（仅客户端平台）"
+     },
+     "ForceResolution1920x1080": {
+      "kind": "bool",
+      "label": "启动游戏时临时覆盖 1920×1080 注册表分辨率"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "游戏路径",
+      "raw": "NativePath"
+     },
+     "Platform": {
+      "kind": "enum",
+      "label": "游戏平台：本地客户端 / 云·星穹铁道（MAS 托管浏览器，只用三月七）。 OptionsValidator.correct() 回退的是 options[0]，Client 必须排第一。",
+      "options": [
+       "Client",
+       "Cloud"
+      ]
+     },
+     "RedeemCodesOnlyWhenChanged": {
+      "kind": "bool",
+      "label": "仅在原生兑换码内容变化时执行兑换"
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "等待时间（秒）"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "HSRConfig.InfoFields",
+    "fields": {
+     "M7APath": {
+      "kind": "str",
+      "label": "M7A 路径",
+      "raw": "FolderPath"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "HSR 脚本名称"
+     },
+     "SRAPath": {
+      "kind": "str",
+      "label": "SRA 路径",
+      "raw": "FolderPath"
+     },
+     "SRAProfile": {
+      "kind": "str",
+      "label": "SRA 配置档案（%APPDATA%\\SRA\\configs 下的文件名，不含扩展名；空串表示自动）",
+      "raw": "SRAProfileName"
+     }
+    }
+   },
+   "Managed": {
+    "kind": "object",
+    "ref": "HSRConfig.ManagedFields",
+    "fields": {
+     "Options": {
+      "kind": "json",
+      "label": "托管任务选项 JSON"
+     },
+     "TaskMapping": {
+      "kind": "json"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "HSRConfig.RunFields",
+    "fields": {
+     "DailyTimeLimit": {
+      "kind": "int",
+      "label": "日常任务超时限制（分钟）"
+     },
+     "LowPerformanceMode": {
+      "kind": "bool",
+      "label": "低性能兼容模式（仅三月七差分宇宙使用，映射到 weekly_divergent_stable_mode）"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "代理次数限制"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "失败任务最大尝试次数"
+     },
+     "WeeklyTimeLimit": {
+      "kind": "int",
+      "label": "周常任务超时限制（分钟）"
+     }
+    }
+   },
+   "Stage": {
+    "kind": "object",
+    "ref": "HSRConfig.StageFields",
+    "fields": {
+     "Channel": {
+      "kind": "enum",
+      "label": "体力关卡通道",
+      "options": [
+       "CalyxGolden",
+       "CalyxCrimson",
+       "Relic",
+       "Ornament"
+      ]
+     },
+     "ScriptEchoOfWar": {
+      "kind": "json",
+      "label": "历战余响脚本原生字段 JSON"
+     },
+     "ScriptStage": {
+      "kind": "json",
+      "label": "主刷关卡脚本原生字段 JSON"
+     }
+    }
+   },
+   "TaskMapping": {
+    "kind": "object",
+    "ref": "HSRConfig.TaskMappingFields",
+    "fields": {
+     "CurrencyWars": {
+      "kind": "enum",
+      "label": "货币战争模块执行脚本",
+      "options": [
+       "M7A",
+       "SRA"
+      ]
+     },
+     "Daily": {
+      "kind": "enum",
+      "label": "日常模块执行脚本",
+      "options": [
+       "M7A",
+       "SRA"
+      ]
+     },
+     "DivergentUniverse": {
+      "kind": "enum",
+      "label": "差分宇宙模块执行脚本",
+      "options": [
+       "M7A",
+       "SRA"
+      ]
+     },
+     "ReceiveRewards": {
+      "kind": "enum",
+      "label": "领取奖励模块执行脚本",
+      "options": [
+       "M7A",
+       "SRA"
+      ]
+     }
+    }
+   },
+   "TaskOpt": {
+    "kind": "object",
+    "ref": "HSRConfig.TaskOptFields",
+    "fields": {
+     "EchoOfWarWeekday": {
+      "kind": "enum",
+      "label": "历战余响开始刷的星期（周一 ~ 周日）",
+      "options": [
+       "Monday",
+       "Tuesday",
+       "Wednesday",
+       "Thursday",
+       "Friday",
+       "Saturday",
+       "Sunday"
+      ]
+     }
+    }
+   },
+   "TaskSwitch": {
+    "kind": "object",
+    "ref": "HSRConfig.TaskSwitchFields",
+    "fields": {
+     "CurrencyWars": {
+      "kind": "bool",
+      "label": "货币战争模块开关"
+     },
+     "Daily": {
+      "kind": "bool",
+      "label": "日常模块开关"
+     },
+     "DivergentUniverse": {
+      "kind": "bool",
+      "label": "差分宇宙模块开关"
+     },
+     "ReceiveRewards": {
+      "kind": "bool",
+      "label": "领取奖励模块开关"
+     }
+    }
+   },
+   "Update": {
+    "kind": "object",
+    "ref": "HSRConfig.UpdateFields",
+    "fields": {
+     "AutoUpdateMode": {
+      "kind": "enum",
+      "label": "外部脚本（M7A / SRA）的自动更新。默认关闭：这两个是用户自己安装、 自带更新器的第三方工具，未经开启就改写它们的目录属于越界；停留在 某个旧版也是真实需求。 只有 AfterRun 一档，没有 BeforeRun：更新的收益本来就落在下一次运行 上，没有理由让当前这轮先等一个 170–750MB 的下载。想立刻更新走配置 页的手动按钮。留成枚举而非布尔，是为了日后要加档时不必做 bool→enum 迁移（MaaFW 正为此背着一个废弃字段）。 选项顺序有意义：OptionsValidator.correct() 回退的是 **options[0]**， 不是这里的默认值，Off 必须排在最前。",
+      "options": [
+       "Off",
+       "AfterRun"
+      ]
+     },
+     "Channel": {
+      "kind": "enum",
+      "label": "更新渠道，两个引擎共用。Mirror 酱还支持 alpha，**故意不开放**—— 那是项目方的内部验证档。这两个值必须与前端选项和 schema 的 Literal 一致，三处任一多给一档，用户选了就会 422 或被静默纠回默认值。",
+      "options": [
+       "stable",
+       "beta"
+      ]
+     },
+     "M7ASource": {
+      "kind": "enum",
+      "label": "下载源按引擎拆开：两者可用的源本就不同，共用一项给不出不同默认值。 版本检查恒走 Mirror 酱的免 CDK 接口（自建站没有 latest 接口，只能用 tag 拼 URL，靠这条口径补上）；这里只决定字节从哪来，且**不做自动 分流**——选了 Mirror 酱而 CDK 不可用时报明原因并跳过，不悄悄换成 GitHub，用户得知道自己在从哪下载。 M7A 没有上 AUTO-MAS 自建站，所以只有两个源，默认 GitHub。",
+      "options": [
+       "GitHub",
+       "MirrorChyan"
+      ]
+     },
+     "MirrorChyanCDK": {
+      "kind": "str",
+      "label": "Mirror 酱 CDK，由用户自己填，**不做全局兜底**：全局那个服务的是 AUTO-MAS 自身的更新，和外部脚本不是一回事，串在一起只会让人猜自己 在用哪个。选 Mirror 酱作为下载源时这一项必填。"
+     },
+     "SRASource": {
+      "kind": "enum",
+      "label": "SRA 默认自建站：免 CDK、不限流、sha256 与 GitHub 逐字节一致，且 SRA 上游 CI 会主动往这里推送，其自带更新器也有 AUTO-MAS 这一档。",
+      "options": [
+       "AutoSite",
+       "GitHub",
+       "MirrorChyan"
+      ]
+     }
+    }
+   }
+  },
+  "MaaFWConfig": {
+   "Device": {
+    "kind": "object",
+    "ref": "MaaFWConfig.DeviceFields",
+    "fields": {
+     "AdbAddress": {
+      "kind": "str",
+      "label": "ADB 地址，留空时启动脚本级模拟器获取"
+     },
+     "AdbInputMethods": {
+      "kind": "int",
+      "label": "ADB 输入方法，默认优先模拟器增强，失败后回退到 MaaTouch / MiniTouch / ADB 同上，仅第二层适用；第一层运行期写死 InputMethods=18446744073709551607"
+     },
+     "AdbPath": {
+      "kind": "str",
+      "label": "ADB 路径，留空时从 MAS 模拟器配置或 MaaFW Toolkit 推导",
+      "raw": "FilePath"
+     },
+     "AdbScreencapMethods": {
+      "kind": "int",
+      "label": "ADB 截图方法，默认优先模拟器增强，失败后回退到 ADB 截图 仅第二层（MAS 进程内 runner）适用：第一层由外壳自己创建控制器，运行期按 M9A 专项的既验证取值写死（ScreencapMethods=64），本项不参与外部运行， 接线前不要暴露到前端，否则用户改了不会生效也没有提示"
+     },
+     "GamepadType": {
+      "kind": "int",
+      "label": "Gamepad 类型，默认 Xbox360"
+     },
+     "HWnd": {
+      "kind": "int",
+      "label": "Win32 / Gamepad 窗口句柄，0 表示未指定"
+     },
+     "PlayCoverAddress": {
+      "kind": "str",
+      "label": "PlayCover 地址"
+     },
+     "PlayCoverUuid": {
+      "kind": "str",
+      "label": "PlayCover UUID"
+     },
+     "Win32KeyboardMethod": {
+      "kind": "int",
+      "label": "Win32 键盘方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     },
+     "Win32MouseMethod": {
+      "kind": "int",
+      "label": "Win32 鼠标方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     },
+     "Win32ScreencapMethod": {
+      "kind": "int",
+      "label": "Win32 截图方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     }
+    }
+   },
+   "Embedded": {
+    "kind": "object",
+    "ref": "MaaFWConfig.EmbeddedFields",
+    "fields": {
+     "FollowSource": {
+      "kind": "bool",
+      "label": "跟随来源目录（开发者模式），默认关。开着时每次运行前比一下来源目录（投影会带走的 文件的路径 + 大小 + 修改时间），变了就重新导入到这个脚本自己的私有渠道（不比版本、 不与同项目其它脚本共用版本），不做项目更新；关掉后回到 Update.Channel 的组。 见 tools/embedded/embedded_project.py「跟随来源目录」一节。"
+     },
+     "ImportedAt": {
+      "kind": "str",
+      "label": "导入时间，仅展示；空值表示尚未导入",
+      "default": null,
+      "raw": "datetime"
+     },
+     "Report": {
+      "kind": "json",
+      "label": "投影报告（省下多少、外壳家族、排除条数与原因），JSON 字符串"
+     },
+     "SourceVersion": {
+      "kind": "str",
+      "label": "由 AUTO-MAS 内嵌一份按 interface 白名单投影的副本来运行。副本在 data/mfw/<脚本 uuid 前 12 位>/，由脚本 ID 推出、不进配置、用户不可手改； Info.Path 继续存用户选的来源目录。更新落地时同样只写白名单内的条目。 导入时来源的 interface 版本，仅展示"
+     }
+    }
+   },
+   "Emulator": {
+    "kind": "object",
+    "ref": "MaaFWConfig.EmulatorFields",
+    "fields": {
+     "Id": {
+      "kind": "str",
+      "label": "模拟器 ID，ADB controller 留空地址时使用",
+      "raw": "UUID | str"
+     },
+     "Index": {
+      "kind": "str",
+      "label": "模拟器索引"
+     }
+    }
+   },
+   "Game": {
+    "kind": "object",
+    "ref": "MaaFWConfig.GameFields",
+    "fields": {
+     "Arguments": {
+      "kind": "str",
+      "label": "游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "Hotkeys": {
+      "kind": "json",
+      "label": "脚本级键位（PI v2.8 hotkey 选项）：``{option 名: {字段名: 组合键字符串}}``， 组合键写成「修饰键+…+主键」（如 ``\"Ctrl+E\"``）。只存与 interface 默认不同的 字段；运行时叠加到每个任务实际生效的 hotkey 选项上，盖过用户快照 / 预设里的值。 仅 Win32 控制器生效（Adb 等其他控制器不叠加）。interface 里已没有的 option / 字段静默忽略，映射不了的值告警后回落到快照 / 默认值（runner/run_plan.py）。"
+     },
+     "LaunchMode": {
+      "kind": "enum",
+      "label": "游戏生命周期模式",
+      "options": [
+       "DirectExe",
+       "AttachOnly"
+      ]
+     },
+     "LaunchPath": {
+      "kind": "str",
+      "label": "DirectExe 模式下 MAS 启动的游戏 exe",
+      "raw": "FilePath"
+     },
+     "PackageName": {
+      "kind": "str",
+      "label": "安卓游戏包名，Adb controller 用：启动模拟器时顺带把游戏拉起来。 留空表示从项目的 pipeline 里自动识别（见 embedded/game_package.py）； 自动识别是启发式的，填了这里就以这里为准。识别不出且没填则不启动游戏。"
+     },
+     "UnityResolution": {
+      "kind": "enum",
+      "label": "DirectExe 模式下，启动游戏前按 exe 路径反查 Unity 注册表，临时把分辨率改成所选 尺寸的窗口模式，游戏关闭后恢复原值（tools/embedded/game_resolution.py）。 只对 Unity 引擎的游戏有效；游戏已在运行时不改。Off 表示不碰。",
+      "options": [
+       "Off",
+       "1920x1080",
+       "1280x720"
+      ]
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "游戏启动等待时间（秒）：既是等窗口出现的上限，也是窗口出现后等画面稳定的上限。 Unity 游戏窗口出现时还在黑屏加载，登录界面往往要二三十秒后才渲染出来； MaaEnd 的 SceneManager 见连续画面不变十几秒就判「环境识别异常」直接失败。 等画面时 worker 每秒截一帧，有内容且连续几秒不变就提前下发，等不到才等满； MaaFW 初始化（加载资源、连 controller、起 agent）与之重叠而不是干等。 只对本轮由 MAS 拉起的游戏生效，AttachOnly 与「游戏已在运行」不等画面。"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MaaFWConfig.InfoFields",
+    "fields": {
+     "Controller": {
+      "kind": "str",
+      "label": "MaaFW controller 名称，留空时按 interface 和设备配置自动选择"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "MaaFW 脚本名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "MaaFW 项目的导入来源目录，应包含 interface.json；导入后可删，删了也原样保留",
+      "raw": "NativePath"
+     },
+     "ProjectLabel": {
+      "kind": "str",
+      "label": "项目标签，可用于区分同一 ProjectInterface 的不同实例"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "MaaFW resource 名称，留空时选择匹配 controller 的第一个 resource"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "MaaFWConfig.RunFields",
+    "fields": {
+     "DailyOnceTasks": {
+      "kind": "str",
+      "label": "每天正常完成一次后，当天剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     },
+     "GameUpdateMode": {
+      "kind": "enum",
+      "label": "游戏客户端更新：Off 不检查 / Check 只检查，落后时本次判失败并提示手动更新 / AutoInstall 落后时自动下载安装包并 adb 安装（保留游戏数据）。只在特调实现了 游戏更新钩子（当前只有 M9A）且 controller 是 ADB 时生效，通用 MaaFW 不读。 Off 必须排第一：OptionsValidator 纠错回退的是 options[0]。",
+      "options": [
+       "Off",
+       "Check",
+       "AutoInstall"
+      ]
+     },
+     "LoopGuard": {
+      "kind": "bool",
+      "label": "原地打转检测（实验性，默认关）。任务在短周期里反复执行同一串节点（周期 ≤ 8 步、每轮都有点击 / 滑动等物理动作）、识别结果又几乎不变时判定卡死：≥ 200 轮且持续 ≥ 10 分钟就停掉这个任务，收尾与单任务超时同一口径（截图、第一个任务或关键任务 结束本轮，其余记失败后继续）。判据见 tools/core/runner/loop_guard.py。"
+     },
+     "MonthlyOnceTasks": {
+      "kind": "str",
+      "label": "每月正常完成一次后，本月剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "运行引擎，决定「谁来跑」： 代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "单次运行时间限制（分钟），套在单个用户的整次运行上。截止时刻随 job 文件交给 worker：到点它自己停掉当前任务、截一张超时图、带回已完成的任务；宿主只在 worker 没能及时停下时才强杀（那时既没有截图也没有进度）。MaaFW 项目一轮日常 动辄几十分钟，30 分钟默认值实测常被误伤，放宽到 120。"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制。重试不关游戏、不再等启动，从当前画面接着跑； 脚本自己的加载超时（MaaEnd 回大世界 20s）一次抖动就把整轮判失败， 只给一次机会时用户看到的就是「从来没成功过」，默认与其他专项一样 3 次。"
+     },
+     "TaskTimeLimit": {
+      "kind": "int",
+      "label": "单个任务的时限（分钟），0 表示不限。某个任务卡住时到点只停它、截一张超时图， 记一条任务失败后接着跑后面的任务（计划里第一个任务超时则结束本轮）；不再让 一个卡住的任务吃掉整轮 RunTimeLimit 的时间。 默认 45 而不是 30：M9A 智能均衡刷材料正常 1–22 分钟，自动深眠在新内容日 实测 33.7 分钟，30 会误伤正常运行。"
+     },
+     "TaskTimeLimitOverrides": {
+      "kind": "json",
+      "label": "按任务名覆盖的单任务时限（分钟），键是 MaaFW 任务名；值 0 表示该任务不限。 默认值由类属性 DEFAULT_TASK_TIME_LIMIT_OVERRIDES 决定（特调可内置几条）； 只在配置里没有这个键时生效，用户存过的值（含清空成 {}）原样保留。"
+     },
+     "WeeklyOnceTasks": {
+      "kind": "str",
+      "label": "每周正常完成一次后，本周剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Selection": {
+    "kind": "object",
+    "ref": "MaaFWConfig.SelectionFields",
+    "fields": {
+     "Controller": {
+      "kind": "str",
+      "label": "当前阶段保留：manager.py 仍从 Selection.* 读取运行范围， 字段迁移到 Info.* / 用户任务配置属于后续 P3 前端回收。 选中的 controller 列表",
+      "raw": "JsonListString"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "选中的 resource 列表",
+      "raw": "JsonListString"
+     },
+     "Tasks": {
+      "kind": "str",
+      "label": "选中的 task 列表",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaFWConfig.TaskFields",
+    "fields": {
+     "Templates": {
+      "kind": "str",
+      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Update": {
+    "kind": "object",
+    "ref": "MaaFWConfig.UpdateFields",
+    "fields": {
+     "AutoUpdateMode": {
+      "kind": "enum",
+      "label": "项目自动更新时机：Off 不更新 / BeforeRun 运行前 / AfterRun 全部用户跑完后。 由 embedded_manager 在用户任务之外执行，耗时不计入 Run.RunTimeLimit。",
+      "options": [
+       "Off",
+       "BeforeRun",
+       "AfterRun"
+      ]
+     },
+     "Channel": {
+      "kind": "enum",
+      "label": "更新渠道只有稳定版与测试版，默认稳定版，要测试版由用户手动切。 不给「跟随全局」：全局那个 Update.Channel 是 MAS 自身的发布通道， 和脚本本体的版本档位是两回事，串在一起只会让人猜。 Mirror 酱还支持 channel=alpha，**故意不开放**——那是项目方的内部 验证档，稳定性无保证，而这里更新的是用户日常在跑的脚本本体。 这两个值必须与前端 updateChannelOptions 和 schema 的 Literal 一致： 三处任一多给一档，用户选了就会 422 或被静默纠回默认值。 旧配置里的空串现在是非法值，会被 correct() 回退成 options[0]， 即 stable——这里的顺序同样不能随意调换。",
+      "options": [
+       "stable",
+       "beta"
+      ]
+     },
+     "GitHubAssetPattern": {
+      "kind": "str",
+      "label": "[已废弃] GitHub release asset 文件名匹配模式"
+     },
+     "GitHubRepo": {
+      "kind": "str",
+      "label": "[已废弃] GitHub 仓库/tag/asset 覆盖：仓库与资产名改为从 interface.json 和目录名自动推导，运行流程不再读取；保留一个版本兼容旧配置文件后删除。"
+     },
+     "GitHubTag": {
+      "kind": "str",
+      "label": "[已废弃] GitHub release tag 覆盖"
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "[已废弃] 旧布尔开关，只在 load() 里迁移为 AutoUpdateMode（False → Off）， 运行流程不再读取；保留一个版本兼容旧配置文件后删除。"
+     },
+     "MirrorChyanCDK": {
+      "kind": "str",
+      "label": "Mirror 酱 CDK，由用户自己填。**不做全局兜底**：全局那个服务的是 AUTO-MAS 自身的更新，和脚本本体不是一回事，串在一起只会让人猜 自己在用哪个。选 Mirror 酱作为下载源时这一项必填。 （合并逻辑见 tools/embedded/update_credentials.py）"
+     },
+     "ProxyAddress": {
+      "kind": "str",
+      "label": "脚本级网络代理，给这个项目的更新包下载与运行环境安装（uv / pip、 binding 源码兜底）用。与 CDK / 渠道不同，这一项**留空就跟随全局** `Update.ProxyAddress`（设置 → 其他 → 网络代理），填了就只走自己的： 代理解决的是「这台机器连不连得上」，多数人全局一份就够，个别项目 的源在别的网络才需要单独指。格式同全局项，`host:port` 不带协议时 补 `http://`（合并逻辑见 tools/embedded/update_credentials.py）。"
+     },
+     "Source": {
+      "kind": "enum",
+      "label": "更新包的下载源，由用户显式选择——**不做自动分流**。 版本检查始终走 Mirror 酱（无 CDK 也能查），但下载去哪由这一项决定： 选 Mirror 酱就必须自己填 CDK，CDK 不可用时明确报错，不悄悄换成 GitHub——用户得知道自己在从哪下载，出问题才查得动。 默认 GitHub：零配置即可用，与全局 Update.Source 的默认值一致。 选项顺序有意义：OptionsValidator.correct() 回退的是 **options[0]**， 不是这里的默认值。旧配置里 Source 是空串（旧默认），加载时会被 correct 成第一项并写回磁盘——GitHub 必须排在前面，否则所有既有 脚本会被静默改成 Mirror 酱，而它们并没有 CDK，每次运行都更新失败。",
+      "options": [
+       "GitHub",
+       "MirrorChyan"
+      ]
+     }
+    }
+   }
+  },
+  "M9AConfig": {
+   "Device": {
+    "kind": "object",
+    "ref": "MaaFWConfig.DeviceFields",
+    "fields": {
+     "AdbAddress": {
+      "kind": "str",
+      "label": "ADB 地址，留空时启动脚本级模拟器获取"
+     },
+     "AdbInputMethods": {
+      "kind": "int",
+      "label": "ADB 输入方法，默认优先模拟器增强，失败后回退到 MaaTouch / MiniTouch / ADB 同上，仅第二层适用；第一层运行期写死 InputMethods=18446744073709551607"
+     },
+     "AdbPath": {
+      "kind": "str",
+      "label": "ADB 路径，留空时从 MAS 模拟器配置或 MaaFW Toolkit 推导",
+      "raw": "FilePath"
+     },
+     "AdbScreencapMethods": {
+      "kind": "int",
+      "label": "ADB 截图方法，默认优先模拟器增强，失败后回退到 ADB 截图 仅第二层（MAS 进程内 runner）适用：第一层由外壳自己创建控制器，运行期按 M9A 专项的既验证取值写死（ScreencapMethods=64），本项不参与外部运行， 接线前不要暴露到前端，否则用户改了不会生效也没有提示"
+     },
+     "GamepadType": {
+      "kind": "int",
+      "label": "Gamepad 类型，默认 Xbox360"
+     },
+     "HWnd": {
+      "kind": "int",
+      "label": "Win32 / Gamepad 窗口句柄，0 表示未指定"
+     },
+     "PlayCoverAddress": {
+      "kind": "str",
+      "label": "PlayCover 地址"
+     },
+     "PlayCoverUuid": {
+      "kind": "str",
+      "label": "PlayCover UUID"
+     },
+     "Win32KeyboardMethod": {
+      "kind": "int",
+      "label": "Win32 键盘方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     },
+     "Win32MouseMethod": {
+      "kind": "int",
+      "label": "Win32 鼠标方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     },
+     "Win32ScreencapMethod": {
+      "kind": "int",
+      "label": "Win32 截图方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     }
+    }
+   },
+   "Embedded": {
+    "kind": "object",
+    "ref": "MaaFWConfig.EmbeddedFields",
+    "fields": {
+     "FollowSource": {
+      "kind": "bool",
+      "label": "跟随来源目录（开发者模式），默认关。开着时每次运行前比一下来源目录（投影会带走的 文件的路径 + 大小 + 修改时间），变了就重新导入到这个脚本自己的私有渠道（不比版本、 不与同项目其它脚本共用版本），不做项目更新；关掉后回到 Update.Channel 的组。 见 tools/embedded/embedded_project.py「跟随来源目录」一节。"
+     },
+     "ImportedAt": {
+      "kind": "str",
+      "label": "导入时间，仅展示；空值表示尚未导入",
+      "default": null,
+      "raw": "datetime"
+     },
+     "Report": {
+      "kind": "json",
+      "label": "投影报告（省下多少、外壳家族、排除条数与原因），JSON 字符串"
+     },
+     "SourceVersion": {
+      "kind": "str",
+      "label": "由 AUTO-MAS 内嵌一份按 interface 白名单投影的副本来运行。副本在 data/mfw/<脚本 uuid 前 12 位>/，由脚本 ID 推出、不进配置、用户不可手改； Info.Path 继续存用户选的来源目录。更新落地时同样只写白名单内的条目。 导入时来源的 interface 版本，仅展示"
+     }
+    }
+   },
+   "Emulator": {
+    "kind": "object",
+    "ref": "MaaFWConfig.EmulatorFields",
+    "fields": {
+     "Id": {
+      "kind": "str",
+      "label": "模拟器 ID，ADB controller 留空地址时使用",
+      "raw": "UUID | str"
+     },
+     "Index": {
+      "kind": "str",
+      "label": "模拟器索引"
+     }
+    }
+   },
+   "Game": {
+    "kind": "object",
+    "ref": "M9AConfig.GameFields",
+    "fields": {
+     "Arguments": {
+      "kind": "str",
+      "label": "游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "Hotkeys": {
+      "kind": "json",
+      "label": "脚本级键位（PI v2.8 hotkey 选项）：``{option 名: {字段名: 组合键字符串}}``， 组合键写成「修饰键+…+主键」（如 ``\"Ctrl+E\"``）。只存与 interface 默认不同的 字段；运行时叠加到每个任务实际生效的 hotkey 选项上，盖过用户快照 / 预设里的值。 仅 Win32 控制器生效（Adb 等其他控制器不叠加）。interface 里已没有的 option / 字段静默忽略，映射不了的值告警后回落到快照 / 默认值（runner/run_plan.py）。"
+     },
+     "LaunchMode": {
+      "kind": "enum",
+      "label": "游戏生命周期模式",
+      "options": [
+       "DirectExe",
+       "AttachOnly"
+      ]
+     },
+     "LaunchPath": {
+      "kind": "str",
+      "label": "DirectExe 模式下 MAS 启动的游戏 exe",
+      "raw": "FilePath"
+     },
+     "PackageName": {
+      "kind": "str",
+      "label": "安卓游戏包名，Adb controller 用：启动模拟器时顺带把游戏拉起来。 留空表示从项目的 pipeline 里自动识别（见 embedded/game_package.py）； 自动识别是启发式的，填了这里就以这里为准。识别不出且没填则不启动游戏。"
+     },
+     "UnityResolution": {
+      "kind": "enum",
+      "label": "DirectExe 模式下，启动游戏前按 exe 路径反查 Unity 注册表，临时把分辨率改成所选 尺寸的窗口模式，游戏关闭后恢复原值（tools/embedded/game_resolution.py）。 只对 Unity 引擎的游戏有效；游戏已在运行时不改。Off 表示不碰。",
+      "options": [
+       "Off",
+       "1920x1080",
+       "1280x720"
+      ]
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "启动等待时间(秒)",
+      "default": 15
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "M9AConfig.InfoFields",
+    "fields": {
+     "Controller": {
+      "kind": "str",
+      "label": "MaaFW controller 名称，留空时按 interface 和设备配置自动选择"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "MaaFW 脚本名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "MaaFW 项目的导入来源目录，应包含 interface.json；导入后可删，删了也原样保留",
+      "raw": "NativePath"
+     },
+     "ProjectLabel": {
+      "kind": "str",
+      "label": "项目标签，可用于区分同一 ProjectInterface 的不同实例"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "MaaFW resource 名称，留空时选择匹配 controller 的第一个 resource"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "M9AConfig.RunFields",
+    "fields": {
+     "DailyOnceTasks": {
+      "kind": "str",
+      "label": "每天正常完成一次后，当天剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     },
+     "GameUpdateMode": {
+      "kind": "enum",
+      "label": "游戏客户端更新：Off 不检查 / Check 只检查，落后时本次判失败并提示手动更新 / AutoInstall 落后时自动下载安装包并 adb 安装（保留游戏数据）。只在特调实现了 游戏更新钩子（当前只有 M9A）且 controller 是 ADB 时生效，通用 MaaFW 不读。 Off 必须排第一：OptionsValidator 纠错回退的是 options[0]。",
+      "options": [
+       "Off",
+       "Check",
+       "AutoInstall"
+      ]
+     },
+     "LoopGuard": {
+      "kind": "bool",
+      "label": "原地打转检测（实验性，默认关）。任务在短周期里反复执行同一串节点（周期 ≤ 8 步、每轮都有点击 / 滑动等物理动作）、识别结果又几乎不变时判定卡死：≥ 200 轮且持续 ≥ 10 分钟就停掉这个任务，收尾与单任务超时同一口径（截图、第一个任务或关键任务 结束本轮，其余记失败后继续）。判据见 tools/core/runner/loop_guard.py。"
+     },
+     "MonthlyOnceTasks": {
+      "kind": "str",
+      "label": "每月正常完成一次后，本月剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "运行引擎，决定「谁来跑」： 代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "单次运行时间限制（分钟），套在单个用户的整次运行上。截止时刻随 job 文件交给 worker：到点它自己停掉当前任务、截一张超时图、带回已完成的任务；宿主只在 worker 没能及时停下时才强杀（那时既没有截图也没有进度）。MaaFW 项目一轮日常 动辄几十分钟，30 分钟默认值实测常被误伤，放宽到 120。"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制。重试不关游戏、不再等启动，从当前画面接着跑； 脚本自己的加载超时（MaaEnd 回大世界 20s）一次抖动就把整轮判失败， 只给一次机会时用户看到的就是「从来没成功过」，默认与其他专项一样 3 次。"
+     },
+     "TaskTimeLimit": {
+      "kind": "int",
+      "label": "单个任务的时限（分钟），0 表示不限。某个任务卡住时到点只停它、截一张超时图， 记一条任务失败后接着跑后面的任务（计划里第一个任务超时则结束本轮）；不再让 一个卡住的任务吃掉整轮 RunTimeLimit 的时间。 默认 45 而不是 30：M9A 智能均衡刷材料正常 1–22 分钟，自动深眠在新内容日 实测 33.7 分钟，30 会误伤正常运行。"
+     },
+     "TaskTimeLimitOverrides": {
+      "kind": "json",
+      "label": "按任务名覆盖的单任务时限（分钟），键是 MaaFW 任务名；值 0 表示该任务不限。 默认值由类属性 DEFAULT_TASK_TIME_LIMIT_OVERRIDES 决定（特调可内置几条）； 只在配置里没有这个键时生效，用户存过的值（含清空成 {}）原样保留。"
+     },
+     "WeeklyOnceTasks": {
+      "kind": "str",
+      "label": "每周正常完成一次后，本周剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Selection": {
+    "kind": "object",
+    "ref": "MaaFWConfig.SelectionFields",
+    "fields": {
+     "Controller": {
+      "kind": "str",
+      "label": "当前阶段保留：manager.py 仍从 Selection.* 读取运行范围， 字段迁移到 Info.* / 用户任务配置属于后续 P3 前端回收。 选中的 controller 列表",
+      "raw": "JsonListString"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "选中的 resource 列表",
+      "raw": "JsonListString"
+     },
+     "Tasks": {
+      "kind": "str",
+      "label": "选中的 task 列表",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaFWConfig.TaskFields",
+    "fields": {
+     "Templates": {
+      "kind": "str",
+      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Update": {
+    "kind": "object",
+    "ref": "MaaFWConfig.UpdateFields",
+    "fields": {
+     "AutoUpdateMode": {
+      "kind": "enum",
+      "label": "项目自动更新时机：Off 不更新 / BeforeRun 运行前 / AfterRun 全部用户跑完后。 由 embedded_manager 在用户任务之外执行，耗时不计入 Run.RunTimeLimit。",
+      "options": [
+       "Off",
+       "BeforeRun",
+       "AfterRun"
+      ]
+     },
+     "Channel": {
+      "kind": "enum",
+      "label": "更新渠道只有稳定版与测试版，默认稳定版，要测试版由用户手动切。 不给「跟随全局」：全局那个 Update.Channel 是 MAS 自身的发布通道， 和脚本本体的版本档位是两回事，串在一起只会让人猜。 Mirror 酱还支持 channel=alpha，**故意不开放**——那是项目方的内部 验证档，稳定性无保证，而这里更新的是用户日常在跑的脚本本体。 这两个值必须与前端 updateChannelOptions 和 schema 的 Literal 一致： 三处任一多给一档，用户选了就会 422 或被静默纠回默认值。 旧配置里的空串现在是非法值，会被 correct() 回退成 options[0]， 即 stable——这里的顺序同样不能随意调换。",
+      "options": [
+       "stable",
+       "beta"
+      ]
+     },
+     "GitHubAssetPattern": {
+      "kind": "str",
+      "label": "[已废弃] GitHub release asset 文件名匹配模式"
+     },
+     "GitHubRepo": {
+      "kind": "str",
+      "label": "[已废弃] GitHub 仓库/tag/asset 覆盖：仓库与资产名改为从 interface.json 和目录名自动推导，运行流程不再读取；保留一个版本兼容旧配置文件后删除。"
+     },
+     "GitHubTag": {
+      "kind": "str",
+      "label": "[已废弃] GitHub release tag 覆盖"
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "[已废弃] 旧布尔开关，只在 load() 里迁移为 AutoUpdateMode（False → Off）， 运行流程不再读取；保留一个版本兼容旧配置文件后删除。"
+     },
+     "MirrorChyanCDK": {
+      "kind": "str",
+      "label": "Mirror 酱 CDK，由用户自己填。**不做全局兜底**：全局那个服务的是 AUTO-MAS 自身的更新，和脚本本体不是一回事，串在一起只会让人猜 自己在用哪个。选 Mirror 酱作为下载源时这一项必填。 （合并逻辑见 tools/embedded/update_credentials.py）"
+     },
+     "ProxyAddress": {
+      "kind": "str",
+      "label": "脚本级网络代理，给这个项目的更新包下载与运行环境安装（uv / pip、 binding 源码兜底）用。与 CDK / 渠道不同，这一项**留空就跟随全局** `Update.ProxyAddress`（设置 → 其他 → 网络代理），填了就只走自己的： 代理解决的是「这台机器连不连得上」，多数人全局一份就够，个别项目 的源在别的网络才需要单独指。格式同全局项，`host:port` 不带协议时 补 `http://`（合并逻辑见 tools/embedded/update_credentials.py）。"
+     },
+     "Source": {
+      "kind": "enum",
+      "label": "更新包的下载源，由用户显式选择——**不做自动分流**。 版本检查始终走 Mirror 酱（无 CDK 也能查），但下载去哪由这一项决定： 选 Mirror 酱就必须自己填 CDK，CDK 不可用时明确报错，不悄悄换成 GitHub——用户得知道自己在从哪下载，出问题才查得动。 默认 GitHub：零配置即可用，与全局 Update.Source 的默认值一致。 选项顺序有意义：OptionsValidator.correct() 回退的是 **options[0]**， 不是这里的默认值。旧配置里 Source 是空串（旧默认），加载时会被 correct 成第一项并写回磁盘——GitHub 必须排在前面，否则所有既有 脚本会被静默改成 Mirror 酱，而它们并没有 CDK，每次运行都更新失败。",
+      "options": [
+       "GitHub",
+       "MirrorChyan"
+      ]
+     }
+    }
+   }
+  },
+  "MSSConfig": {
+   "Device": {
+    "kind": "object",
+    "ref": "MaaFWConfig.DeviceFields",
+    "fields": {
+     "AdbAddress": {
+      "kind": "str",
+      "label": "ADB 地址，留空时启动脚本级模拟器获取"
+     },
+     "AdbInputMethods": {
+      "kind": "int",
+      "label": "ADB 输入方法，默认优先模拟器增强，失败后回退到 MaaTouch / MiniTouch / ADB 同上，仅第二层适用；第一层运行期写死 InputMethods=18446744073709551607"
+     },
+     "AdbPath": {
+      "kind": "str",
+      "label": "ADB 路径，留空时从 MAS 模拟器配置或 MaaFW Toolkit 推导",
+      "raw": "FilePath"
+     },
+     "AdbScreencapMethods": {
+      "kind": "int",
+      "label": "ADB 截图方法，默认优先模拟器增强，失败后回退到 ADB 截图 仅第二层（MAS 进程内 runner）适用：第一层由外壳自己创建控制器，运行期按 M9A 专项的既验证取值写死（ScreencapMethods=64），本项不参与外部运行， 接线前不要暴露到前端，否则用户改了不会生效也没有提示"
+     },
+     "GamepadType": {
+      "kind": "int",
+      "label": "Gamepad 类型，默认 Xbox360"
+     },
+     "HWnd": {
+      "kind": "int",
+      "label": "Win32 / Gamepad 窗口句柄，0 表示未指定"
+     },
+     "PlayCoverAddress": {
+      "kind": "str",
+      "label": "PlayCover 地址"
+     },
+     "PlayCoverUuid": {
+      "kind": "str",
+      "label": "PlayCover UUID"
+     },
+     "Win32KeyboardMethod": {
+      "kind": "int",
+      "label": "Win32 键盘方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     },
+     "Win32MouseMethod": {
+      "kind": "int",
+      "label": "Win32 鼠标方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     },
+     "Win32ScreencapMethod": {
+      "kind": "int",
+      "label": "Win32 截图方法，0 表示使用 interface 声明或 MaaFW 默认值"
+     }
+    }
+   },
+   "Embedded": {
+    "kind": "object",
+    "ref": "MaaFWConfig.EmbeddedFields",
+    "fields": {
+     "FollowSource": {
+      "kind": "bool",
+      "label": "跟随来源目录（开发者模式），默认关。开着时每次运行前比一下来源目录（投影会带走的 文件的路径 + 大小 + 修改时间），变了就重新导入到这个脚本自己的私有渠道（不比版本、 不与同项目其它脚本共用版本），不做项目更新；关掉后回到 Update.Channel 的组。 见 tools/embedded/embedded_project.py「跟随来源目录」一节。"
+     },
+     "ImportedAt": {
+      "kind": "str",
+      "label": "导入时间，仅展示；空值表示尚未导入",
+      "default": null,
+      "raw": "datetime"
+     },
+     "Report": {
+      "kind": "json",
+      "label": "投影报告（省下多少、外壳家族、排除条数与原因），JSON 字符串"
+     },
+     "SourceVersion": {
+      "kind": "str",
+      "label": "由 AUTO-MAS 内嵌一份按 interface 白名单投影的副本来运行。副本在 data/mfw/<脚本 uuid 前 12 位>/，由脚本 ID 推出、不进配置、用户不可手改； Info.Path 继续存用户选的来源目录。更新落地时同样只写白名单内的条目。 导入时来源的 interface 版本，仅展示"
+     }
+    }
+   },
+   "Emulator": {
+    "kind": "object",
+    "ref": "MaaFWConfig.EmulatorFields",
+    "fields": {
+     "Id": {
+      "kind": "str",
+      "label": "模拟器 ID，ADB controller 留空地址时使用",
+      "raw": "UUID | str"
+     },
+     "Index": {
+      "kind": "str",
+      "label": "模拟器索引"
+     }
+    }
+   },
+   "Game": {
+    "kind": "object",
+    "ref": "MaaFWConfig.GameFields",
+    "fields": {
+     "Arguments": {
+      "kind": "str",
+      "label": "游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "Hotkeys": {
+      "kind": "json",
+      "label": "脚本级键位（PI v2.8 hotkey 选项）：``{option 名: {字段名: 组合键字符串}}``， 组合键写成「修饰键+…+主键」（如 ``\"Ctrl+E\"``）。只存与 interface 默认不同的 字段；运行时叠加到每个任务实际生效的 hotkey 选项上，盖过用户快照 / 预设里的值。 仅 Win32 控制器生效（Adb 等其他控制器不叠加）。interface 里已没有的 option / 字段静默忽略，映射不了的值告警后回落到快照 / 默认值（runner/run_plan.py）。"
+     },
+     "LaunchMode": {
+      "kind": "enum",
+      "label": "游戏生命周期模式",
+      "options": [
+       "DirectExe",
+       "AttachOnly"
+      ]
+     },
+     "LaunchPath": {
+      "kind": "str",
+      "label": "DirectExe 模式下 MAS 启动的游戏 exe",
+      "raw": "FilePath"
+     },
+     "PackageName": {
+      "kind": "str",
+      "label": "安卓游戏包名，Adb controller 用：启动模拟器时顺带把游戏拉起来。 留空表示从项目的 pipeline 里自动识别（见 embedded/game_package.py）； 自动识别是启发式的，填了这里就以这里为准。识别不出且没填则不启动游戏。"
+     },
+     "UnityResolution": {
+      "kind": "enum",
+      "label": "DirectExe 模式下，启动游戏前按 exe 路径反查 Unity 注册表，临时把分辨率改成所选 尺寸的窗口模式，游戏关闭后恢复原值（tools/embedded/game_resolution.py）。 只对 Unity 引擎的游戏有效；游戏已在运行时不改。Off 表示不碰。",
+      "options": [
+       "Off",
+       "1920x1080",
+       "1280x720"
+      ]
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "游戏启动等待时间（秒）：既是等窗口出现的上限，也是窗口出现后等画面稳定的上限。 Unity 游戏窗口出现时还在黑屏加载，登录界面往往要二三十秒后才渲染出来； MaaEnd 的 SceneManager 见连续画面不变十几秒就判「环境识别异常」直接失败。 等画面时 worker 每秒截一帧，有内容且连续几秒不变就提前下发，等不到才等满； MaaFW 初始化（加载资源、连 controller、起 agent）与之重叠而不是干等。 只对本轮由 MAS 拉起的游戏生效，AttachOnly 与「游戏已在运行」不等画面。"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "MSSConfig.InfoFields",
+    "fields": {
+     "Controller": {
+      "kind": "str",
+      "label": "MaaFW controller 名称，留空时按 interface 和设备配置自动选择"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "MaaFW 脚本名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "MaaFW 项目的导入来源目录，应包含 interface.json；导入后可删，删了也原样保留",
+      "raw": "NativePath"
+     },
+     "ProjectLabel": {
+      "kind": "str",
+      "label": "项目标签，可用于区分同一 ProjectInterface 的不同实例"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "MaaFW resource 名称，留空时选择匹配 controller 的第一个 resource"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "MaaFWConfig.RunFields",
+    "fields": {
+     "DailyOnceTasks": {
+      "kind": "str",
+      "label": "每天正常完成一次后，当天剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     },
+     "GameUpdateMode": {
+      "kind": "enum",
+      "label": "游戏客户端更新：Off 不检查 / Check 只检查，落后时本次判失败并提示手动更新 / AutoInstall 落后时自动下载安装包并 adb 安装（保留游戏数据）。只在特调实现了 游戏更新钩子（当前只有 M9A）且 controller 是 ADB 时生效，通用 MaaFW 不读。 Off 必须排第一：OptionsValidator 纠错回退的是 options[0]。",
+      "options": [
+       "Off",
+       "Check",
+       "AutoInstall"
+      ]
+     },
+     "LoopGuard": {
+      "kind": "bool",
+      "label": "原地打转检测（实验性，默认关）。任务在短周期里反复执行同一串节点（周期 ≤ 8 步、每轮都有点击 / 滑动等物理动作）、识别结果又几乎不变时判定卡死：≥ 200 轮且持续 ≥ 10 分钟就停掉这个任务，收尾与单任务超时同一口径（截图、第一个任务或关键任务 结束本轮，其余记失败后继续）。判据见 tools/core/runner/loop_guard.py。"
+     },
+     "MonthlyOnceTasks": {
+      "kind": "str",
+      "label": "每月正常完成一次后，本月剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "运行引擎，决定「谁来跑」： 代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "单次运行时间限制（分钟），套在单个用户的整次运行上。截止时刻随 job 文件交给 worker：到点它自己停掉当前任务、截一张超时图、带回已完成的任务；宿主只在 worker 没能及时停下时才强杀（那时既没有截图也没有进度）。MaaFW 项目一轮日常 动辄几十分钟，30 分钟默认值实测常被误伤，放宽到 120。"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制。重试不关游戏、不再等启动，从当前画面接着跑； 脚本自己的加载超时（MaaEnd 回大世界 20s）一次抖动就把整轮判失败， 只给一次机会时用户看到的就是「从来没成功过」，默认与其他专项一样 3 次。"
+     },
+     "TaskTimeLimit": {
+      "kind": "int",
+      "label": "单个任务的时限（分钟），0 表示不限。某个任务卡住时到点只停它、截一张超时图， 记一条任务失败后接着跑后面的任务（计划里第一个任务超时则结束本轮）；不再让 一个卡住的任务吃掉整轮 RunTimeLimit 的时间。 默认 45 而不是 30：M9A 智能均衡刷材料正常 1–22 分钟，自动深眠在新内容日 实测 33.7 分钟，30 会误伤正常运行。"
+     },
+     "TaskTimeLimitOverrides": {
+      "kind": "json",
+      "label": "按任务名覆盖的单任务时限（分钟），键是 MaaFW 任务名；值 0 表示该任务不限。 默认值由类属性 DEFAULT_TASK_TIME_LIMIT_OVERRIDES 决定（特调可内置几条）； 只在配置里没有这个键时生效，用户存过的值（含清空成 {}）原样保留。"
+     },
+     "WeeklyOnceTasks": {
+      "kind": "str",
+      "label": "每周正常完成一次后，本周剩余时间跳过的 MaaFW 任务名列表",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Selection": {
+    "kind": "object",
+    "ref": "MaaFWConfig.SelectionFields",
+    "fields": {
+     "Controller": {
+      "kind": "str",
+      "label": "当前阶段保留：manager.py 仍从 Selection.* 读取运行范围， 字段迁移到 Info.* / 用户任务配置属于后续 P3 前端回收。 选中的 controller 列表",
+      "raw": "JsonListString"
+     },
+     "Resource": {
+      "kind": "str",
+      "label": "选中的 resource 列表",
+      "raw": "JsonListString"
+     },
+     "Tasks": {
+      "kind": "str",
+      "label": "选中的 task 列表",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Task": {
+    "kind": "object",
+    "ref": "MaaFWConfig.TaskFields",
+    "fields": {
+     "Templates": {
+      "kind": "str",
+      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
+      "raw": "JsonListString"
+     }
+    }
+   },
+   "Update": {
+    "kind": "object",
+    "ref": "MaaFWConfig.UpdateFields",
+    "fields": {
+     "AutoUpdateMode": {
+      "kind": "enum",
+      "label": "项目自动更新时机：Off 不更新 / BeforeRun 运行前 / AfterRun 全部用户跑完后。 由 embedded_manager 在用户任务之外执行，耗时不计入 Run.RunTimeLimit。",
+      "options": [
+       "Off",
+       "BeforeRun",
+       "AfterRun"
+      ]
+     },
+     "Channel": {
+      "kind": "enum",
+      "label": "更新渠道只有稳定版与测试版，默认稳定版，要测试版由用户手动切。 不给「跟随全局」：全局那个 Update.Channel 是 MAS 自身的发布通道， 和脚本本体的版本档位是两回事，串在一起只会让人猜。 Mirror 酱还支持 channel=alpha，**故意不开放**——那是项目方的内部 验证档，稳定性无保证，而这里更新的是用户日常在跑的脚本本体。 这两个值必须与前端 updateChannelOptions 和 schema 的 Literal 一致： 三处任一多给一档，用户选了就会 422 或被静默纠回默认值。 旧配置里的空串现在是非法值，会被 correct() 回退成 options[0]， 即 stable——这里的顺序同样不能随意调换。",
+      "options": [
+       "stable",
+       "beta"
+      ]
+     },
+     "GitHubAssetPattern": {
+      "kind": "str",
+      "label": "[已废弃] GitHub release asset 文件名匹配模式"
+     },
+     "GitHubRepo": {
+      "kind": "str",
+      "label": "[已废弃] GitHub 仓库/tag/asset 覆盖：仓库与资产名改为从 interface.json 和目录名自动推导，运行流程不再读取；保留一个版本兼容旧配置文件后删除。"
+     },
+     "GitHubTag": {
+      "kind": "str",
+      "label": "[已废弃] GitHub release tag 覆盖"
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "[已废弃] 旧布尔开关，只在 load() 里迁移为 AutoUpdateMode（False → Off）， 运行流程不再读取；保留一个版本兼容旧配置文件后删除。"
+     },
+     "MirrorChyanCDK": {
+      "kind": "str",
+      "label": "Mirror 酱 CDK，由用户自己填。**不做全局兜底**：全局那个服务的是 AUTO-MAS 自身的更新，和脚本本体不是一回事，串在一起只会让人猜 自己在用哪个。选 Mirror 酱作为下载源时这一项必填。 （合并逻辑见 tools/embedded/update_credentials.py）"
+     },
+     "ProxyAddress": {
+      "kind": "str",
+      "label": "脚本级网络代理，给这个项目的更新包下载与运行环境安装（uv / pip、 binding 源码兜底）用。与 CDK / 渠道不同，这一项**留空就跟随全局** `Update.ProxyAddress`（设置 → 其他 → 网络代理），填了就只走自己的： 代理解决的是「这台机器连不连得上」，多数人全局一份就够，个别项目 的源在别的网络才需要单独指。格式同全局项，`host:port` 不带协议时 补 `http://`（合并逻辑见 tools/embedded/update_credentials.py）。"
+     },
+     "Source": {
+      "kind": "enum",
+      "label": "更新包的下载源，由用户显式选择——**不做自动分流**。 版本检查始终走 Mirror 酱（无 CDK 也能查），但下载去哪由这一项决定： 选 Mirror 酱就必须自己填 CDK，CDK 不可用时明确报错，不悄悄换成 GitHub——用户得知道自己在从哪下载，出问题才查得动。 默认 GitHub：零配置即可用，与全局 Update.Source 的默认值一致。 选项顺序有意义：OptionsValidator.correct() 回退的是 **options[0]**， 不是这里的默认值。旧配置里 Source 是空串（旧默认），加载时会被 correct 成第一项并写回磁盘——GitHub 必须排在前面，否则所有既有 脚本会被静默改成 Mirror 酱，而它们并没有 CDK，每次运行都更新失败。",
+      "options": [
+       "GitHub",
+       "MirrorChyan"
+      ]
+     }
+    }
+   }
+  },
+  "GeneralConfig": {
+   "Game": {
+    "kind": "object",
+    "ref": "GeneralConfig.GameFields",
+    "fields": {
+     "Arguments": {
+      "kind": "str",
+      "label": "游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "EmulatorId": {
+      "kind": "str",
+      "label": "模拟器 ID",
+      "raw": "UUID | str"
+     },
+     "EmulatorIndex": {
+      "kind": "str",
+      "label": "模拟器索引"
+     },
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用游戏"
+     },
+     "IfForceClose": {
+      "kind": "bool",
+      "label": "是否强制关闭"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "游戏路径",
+      "raw": "FilePath"
+     },
+     "ProcessName": {
+      "kind": "str",
+      "label": "游戏进程名称"
+     },
+     "Type": {
+      "kind": "enum",
+      "label": "游戏类型",
+      "options": [
+       "Emulator",
+       "Client",
+       "URL"
+      ]
+     },
+     "URL": {
+      "kind": "str",
+      "label": "自定义协议URL"
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "等待时间（秒）"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "GeneralConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     },
+     "RootPath": {
+      "kind": "str",
+      "label": "根目录路径",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "GeneralConfig.RunFields",
+    "fields": {
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "运行时间限制（分钟）"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制"
+     }
+    }
+   },
+   "Script": {
+    "kind": "object",
+    "ref": "GeneralConfig.ScriptFields",
+    "fields": {
+     "Arguments": {
+      "kind": "str",
+      "label": "脚本参数",
+      "raw": "CliArgumentListString"
+     },
+     "ConfigPath": {
+      "kind": "str",
+      "label": "配置文件路径",
+      "raw": "NativePath"
+     },
+     "ConfigPathMode": {
+      "kind": "enum",
+      "label": "配置路径模式",
+      "options": [
+       "File",
+       "Folder"
+      ]
+     },
+     "ErrorLog": {
+      "kind": "str",
+      "label": "错误日志匹配"
+     },
+     "ErrorLogMode": {
+      "kind": "enum",
+      "label": "错误日志匹配模式：Split = 「|」分隔关键字子串包含；Regex = 正则表达式",
+      "options": [
+       "Split",
+       "Regex"
+      ]
+     },
+     "IfTrackProcess": {
+      "kind": "bool",
+      "label": "是否追踪进程"
+     },
+     "LogHookEnabled": {
+      "kind": "bool",
+      "label": "日志预处理启用开关：关闭时保留规则配置，行为与未配置预处理完全一致"
+     },
+     "LogHookRules": {
+      "kind": "str",
+      "label": "日志预处理规则（JSON 数组，每项形如 {\"type\":\"drop|replace\",...}）； 预处理先于任务日志、推送日志采集与成功/失败判定执行，丢弃的行不进入下游"
+     },
+     "LogPath": {
+      "kind": "str",
+      "label": "日志路径",
+      "raw": "NativePath"
+     },
+     "LogPathFormat": {
+      "kind": "str",
+      "label": "日志路径格式"
+     },
+     "LogTimeEnd": {
+      "kind": "int",
+      "label": "日志时间戳结束位置"
+     },
+     "LogTimeFormat": {
+      "kind": "str",
+      "label": "日志时间格式"
+     },
+     "LogTimeStart": {
+      "kind": "int",
+      "label": "日志时间戳开始位置"
+     },
+     "PushLogEnabled": {
+      "kind": "bool",
+      "label": "推送日志启用开关：关闭后保留高级正则配置，但不会实际采集推送日志"
+     },
+     "PushLogPatterns": {
+      "kind": "str",
+      "label": "推送日志高级模式（JSON 数组，每项形如 {\"type\":\"regex|multiline\",...}）"
+     },
+     "ScriptPath": {
+      "kind": "str",
+      "label": "脚本路径",
+      "raw": "NativePath"
+     },
+     "SuccessLog": {
+      "kind": "str",
+      "label": "成功日志匹配"
+     },
+     "SuccessLogMode": {
+      "kind": "enum",
+      "label": "成功日志匹配模式：Split = 「|」分隔关键字子串包含；Regex = 正则表达式",
+      "options": [
+       "Split",
+       "Regex"
+      ]
+     },
+     "TrackProcessCmdline": {
+      "kind": "str",
+      "label": "追踪进程的启动命令行参数",
+      "raw": "CliArgumentString"
+     },
+     "TrackProcessExe": {
+      "kind": "str",
+      "label": "追踪进程的文件路径"
+     },
+     "TrackProcessName": {
+      "kind": "str",
+      "label": "追踪进程的名称"
+     },
+     "UpdateConfigMode": {
+      "kind": "enum",
+      "label": "更新配置模式",
+      "options": [
+       "Never",
+       "Success",
+       "Failure",
+       "Always"
+      ]
+     }
+    }
+   }
+  },
+  "OkwwConfig": {
+   "Game": {
+    "kind": "object",
+    "ref": "OkwwConfig.GameFields",
+    "fields": {
+     "AccountSwitch": {
+      "kind": "bool",
+      "label": "运行前强制切换账号（依赖游戏配置启用；用户未填手机号时不切换）"
+     },
+     "Arguments": {
+      "kind": "str",
+      "label": "鸣潮启动参数（直启时 MAS 会额外内置 -krqlv=hd，与本参数并存）",
+      "raw": "CliArgumentString"
+     },
+     "ClientPath": {
+      "kind": "str",
+      "label": "直启模式下手动指定的客户端程序路径（留空则由启动器路径自动定位）",
+      "raw": "FilePath"
+     },
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否由 MAS 管理游戏进程"
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "任务前是否由 MAS 检查并接管更新游戏"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "鸣潮官方启动器路径（两种启动方式均由它定位游戏安装目录）",
+      "raw": "FilePath"
+     },
+     "Type": {
+      "kind": "enum",
+      "label": "游戏启动方式：Client=直启客户端（内置 -krqlv=hd），Launcher=经官方启动器 默认值必须排首位：值非法时 correct() 回落到 options[0]",
+      "options": [
+       "Client",
+       "Launcher"
+      ]
+     },
+     "UpdateFullSyncLimit": {
+      "kind": "int",
+      "label": "整文件同步体积上限（GB），超过则中止并提示手动处理"
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "等待游戏启动时间"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "OkwwConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     },
+     "RootPath": {
+      "kind": "str",
+      "label": "OK-WW 脚本根目录",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "OkwwConfig.RunFields",
+    "fields": {
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "每日代理次数上限"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "单次运行超时时间"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "单次任务重试次数"
+     }
+    }
+   }
+  },
+  "OkNteConfig": {
+   "Game": {
+    "kind": "object",
+    "ref": "OkNteConfig.GameFields",
+    "fields": {
+     "AccountSwitch": {
+      "kind": "bool",
+      "label": "运行前强制切换账号（依赖游戏配置启用；用户未填手机号时不切换）"
+     },
+     "Arguments": {
+      "kind": "str",
+      "label": "游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "CloseOnFinish": {
+      "kind": "bool",
+      "label": "任务结束后是否关闭游戏"
+     },
+     "Enabled": {
+      "kind": "bool",
+      "label": "游戏相关功能是否启用"
+     },
+     "IfForceClose": {
+      "kind": "bool",
+      "label": "是否强制关闭游戏进程"
+     },
+     "LaunchBeforeTask": {
+      "kind": "bool",
+      "label": "任务开始前是否由 MAS 启动游戏"
+     },
+     "LaunchMode": {
+      "kind": "enum",
+      "label": "静默启动（Autoplay）= 启动器带 /autoplay 拉起，不点按钮；启动器界面启动 （LauncherUi）= 打开启动器界面，由 OCR 点「开始游戏」及其弹窗/更新分支。 默认值双轨：新建脚本取类默认 Autoplay；存量脚本（配置无该键）由 load 迁移 固化升级前的 LauncherUi（见 _migrate_oknte_launch_mode_default），保持升级前行为。",
+      "options": [
+       "Autoplay",
+       "LauncherUi"
+      ]
+     },
+     "Path": {
+      "kind": "str",
+      "label": "异环直启 HTGame.exe 会卡界面，此路径为启动器 exe（NTELauncher/NTEGame.exe）， 旧值为 HTGame.exe 时运行时自动反推同安装根下的启动器",
+      "raw": "FilePath"
+     },
+     "ProcessName": {
+      "kind": "str",
+      "label": "游戏进程名称"
+     },
+     "Type": {
+      "kind": "enum",
+      "label": "类型: PC端, URL协议",
+      "options": [
+       "Client",
+       "URL"
+      ]
+     },
+     "URL": {
+      "kind": "str",
+      "label": "自定义协议URL"
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "游戏等待启动时间"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "OkNteConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     },
+     "RootPath": {
+      "kind": "str",
+      "label": "脚本根目录",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "OkNteConfig.RunFields",
+    "fields": {
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "每日代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "日志超时限制"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "重试次数限制"
+     }
+    }
+   },
+   "Script": {
+    "kind": "object",
+    "ref": "OkNteConfig.ScriptFields",
+    "fields": {
+     "Arguments": {
+      "kind": "str",
+      "label": "OkNte 运行参数建议由用户配置（-t / -e 由用户配置 Task 决定），但仍保留高级参数入口",
+      "raw": "CliArgumentListString"
+     },
+     "ConfigPath": {
+      "kind": "str",
+      "label": "配置文件路径",
+      "raw": "NativePath"
+     },
+     "ConfigPathMode": {
+      "kind": "enum",
+      "label": "配置文件类型: 单个文件, 文件夹",
+      "options": [
+       "File",
+       "Folder"
+      ]
+     },
+     "ErrorLog": {
+      "kind": "str",
+      "label": "错误时日志"
+     },
+     "ErrorLogMode": {
+      "kind": "enum",
+      "label": "错误时日志匹配模式: 关键字子串包含, 正则表达式",
+      "options": [
+       "Split",
+       "Regex"
+      ]
+     },
+     "IfTrackProcess": {
+      "kind": "bool",
+      "label": "是否追踪脚本子进程"
+     },
+     "LogPath": {
+      "kind": "str",
+      "label": "日志文件路径",
+      "raw": "NativePath"
+     },
+     "LogPathFormat": {
+      "kind": "str",
+      "label": "日志文件名格式"
+     },
+     "LogTimeEnd": {
+      "kind": "int",
+      "label": "日志时间戳结束位置"
+     },
+     "LogTimeFormat": {
+      "kind": "str",
+      "label": "日志时间戳格式"
+     },
+     "LogTimeStart": {
+      "kind": "int",
+      "label": "日志时间戳开始位置"
+     },
+     "ScriptPath": {
+      "kind": "str",
+      "label": "脚本可执行文件路径",
+      "raw": "FilePath"
+     },
+     "SuccessLog": {
+      "kind": "str",
+      "label": "成功时日志"
+     },
+     "SuccessLogMode": {
+      "kind": "enum",
+      "label": "成功时日志匹配模式: 关键字子串包含, 正则表达式",
+      "options": [
+       "Split",
+       "Regex"
+      ]
+     },
+     "TrackProcessCmdline": {
+      "kind": "str",
+      "label": "追踪进程启动命令行参数",
+      "raw": "CliArgumentString"
+     },
+     "TrackProcessExe": {
+      "kind": "str",
+      "label": "追踪进程文件路径"
+     },
+     "TrackProcessName": {
+      "kind": "str",
+      "label": "追踪进程名称"
+     },
+     "UpdateConfigMode": {
+      "kind": "enum",
+      "label": "更新配置时机, 从不, 仅成功时, 仅失败时, 任务结束时",
+      "options": [
+       "Never",
+       "Success",
+       "Failure",
+       "Always"
+      ]
+     }
+    }
+   }
+  },
+  "BetterGIConfig": {
+   "Game": {
+    "kind": "object",
+    "ref": "BetterGIConfig.GameFields",
+    "fields": {
+     "CloseOnFinish": {
+      "kind": "bool",
+      "label": "任务结束后关闭游戏"
+     },
+     "Controller": {
+      "kind": "enum",
+      "label": "控制器（游戏控制方式：电脑端-前台 / 电脑端-云原神 / 电脑端-桌面分身） ⚠️ 预留字段：当前运行时不读取（BetterGI 自行管理游戏控制），云原神 / 桌面分身 尚未开发。为将来支持而保留占位并持久化，恒为默认「电脑端-前台」，勿被判定死代码误删。",
+      "options": [
+       "电脑端-前台",
+       "电脑端-云原神",
+       "电脑端-桌面分身"
+      ]
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "是否在启动 BetterGI 前由 MAS 检查并接管原神客户端更新"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "BetterGIConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     },
+     "RootPath": {
+      "kind": "str",
+      "label": "脚本根目录",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "BetterGIConfig.RunFields",
+    "fields": {
+     "AccountSwitchMethod": {
+      "kind": "enum",
+      "label": "账号切换方式（脚本级，参考 MaaEnd Run.AccountSwitchMethod）： BGI = BetterGI「切换账号多模式」脚本执行（国际服请改用此方式）；MAS = MAS 侧 前台 OCR 直接操控游戏切号（官服/B服，游戏由 MAS 托管启动），官服/B服推荐。 默认值双轨：新建脚本取类默认 MAS；存量脚本（配置无该键）由 load 迁移固化 旧默认 BGI（见 _migrate_bgi_account_switch_default），保持升级前行为。",
+      "options": [
+       "BGI",
+       "MAS"
+      ]
+     },
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "每日代理次数限制"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "日志超时限制"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "重试次数限制"
+     },
+     "UseAdmin": {
+      "kind": "bool",
+      "label": "是否以管理员权限启动 BetterGI。默认提权（贴近旧行为）；若 MAS 平时以非管理员 运行、又不希望每次启动 BGI 都弹 UAC（无人值守任务尤其容易挂在授权上），可关闭。 MAS 自身已提权时，即使此处开启，也不会重复触发 UAC（子进程自动继承管理员令牌）。"
+     }
+    }
+   }
+  },
+  "ZzzOdConfig": {
+   "Game": {
+    "kind": "object",
+    "ref": "ZzzOdConfig.GameFields",
+    "fields": {
+     "AccountSwitch": {
+      "kind": "enum",
+      "label": "多用户账号切换方式（脚本级下拉，value 对应 manager 的分派分支）： 单实例切换（默认，推荐）= 逐用户独立会话：注入该用户配置 → 单实例 运行（仅运行当前，无槽间切换）→ 跑完关闭 → 下一个用户。失败域 隔离最好，重试只重启失败用户； 多实例切换（不推荐）= 全部启用用户合并为一轮多账号运行，一条龙内部 依次切换账号。总时长最短，但单槽失败会拖整轮重试、切换次数随 用户数线性增长； MAS切换 = MAS 侧 OCR 操控游戏完成账号切换后交一条龙运行（暂未开放）。",
+      "options": [
+       "单实例切换",
+       "多实例切换",
+       "MAS切换"
+      ]
+     },
+     "Arguments": {
+      "kind": "str",
+      "label": "游戏启动参数",
+      "raw": "CliArgumentString"
+     },
+     "CloseOnFinish": {
+      "kind": "bool",
+      "label": "任务结束后由 MAS 关闭游戏（收尾/手动停止时按进程名结束游戏本体， 覆盖失败重试与手动停止场景，是「结束后操作」的兜底）。与用户级 OneDragon.AfterDone 下发的 --close-game 相互独立，同时配置会各 执行一次（无害）"
+     },
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否由 MAS 管理游戏进程（任务前启动游戏由此开关总控）"
+     },
+     "LaunchBeforeTask": {
+      "kind": "bool",
+      "label": "任务前由 MAS 启动游戏（检测到游戏进程正在运行时跳过重复启动）"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "游戏路径（游戏本体 ZenlessZoneZero.exe）",
+      "raw": "FilePath"
+     },
+     "WaitTime": {
+      "kind": "int",
+      "label": "启动游戏后的等待时间（秒）"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "ZzzOdConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     },
+     "RootPath": {
+      "kind": "str",
+      "label": "zzz-od 安装根目录（含 OneDragon 启动器、src 与 config）",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "ZzzOdConfig.RunFields",
+    "fields": {
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "每日代理次数上限"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "单次运行超时时间（分钟）；这是日志停滞超时（latest_time 距今），不是 总时长上限——一条龙持续写日志就不会触发；启动器层故障（不写应用层 日志）也靠它兜底超时后切换启动器"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "单次任务重试次数"
+     }
+    }
+   }
+  },
+  "BAAHConfig": {
+   "Emulator": {
+    "kind": "object",
+    "ref": "BAAHConfig.EmulatorFields",
+    "fields": {
+     "Id": {
+      "kind": "str",
+      "label": "模拟器 ID",
+      "raw": "UUID | str"
+     },
+     "Index": {
+      "kind": "str",
+      "label": "模拟器索引"
+     }
+    }
+   },
+   "Info": {
+    "kind": "object",
+    "ref": "BAAHConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "BAAHConfig.RunFields",
+    "fields": {
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "运行时间限制（分钟）"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "运行次数限制"
+     }
+    }
+   },
+   "Script": {
+    "kind": "object",
+    "ref": "BAAHConfig.ScriptFields",
+    "fields": {
+     "BAAHPath": {
+      "kind": "str",
+      "label": "BAAH 主程序路径；程序目录、配置目录与日志目录都从它派生",
+      "raw": "FilePath"
+     },
+     "IfManageConfig": {
+      "kind": "bool",
+      "label": "是否由本软件托管运行所需的关键配置项"
+     },
+     "PushLogEnabled": {
+      "kind": "bool",
+      "label": "是否在任务报告中展示 BAAH 的任务节点详情"
+     }
+    }
+   }
+  },
+  "WhimboxConfig": {
+   "Info": {
+    "kind": "object",
+    "ref": "WhimboxConfig.InfoFields",
+    "fields": {
+     "Name": {
+      "kind": "str",
+      "label": "脚本名称"
+     },
+     "RootPath": {
+      "kind": "str",
+      "label": "奇想盒安装根目录（whimbox_app.exe 所在目录；configs/logs 与其同级）",
+      "raw": "FolderPath"
+     }
+    }
+   },
+   "Run": {
+    "kind": "object",
+    "ref": "WhimboxConfig.RunFields",
+    "fields": {
+     "HardTimeLimit": {
+      "kind": "int",
+      "label": "单账号运行总时限（分钟），包含等待和全部重试"
+     },
+     "ProxyTimesLimit": {
+      "kind": "int",
+      "label": "每日代理次数上限（0=不限）"
+     },
+     "RunTimeLimit": {
+      "kind": "int",
+      "label": "运行超时（分钟）：日志静默超过该时长判定卡死"
+     },
+     "RunTimesLimit": {
+      "kind": "int",
+      "label": "失败重试次数：只用于「没有上游结论」的异常（进程提前退出/卡死）； 上游自己判负时，仅当失败原因与上一轮不同才继续重试（同一结论连着出现即收口）"
+     },
+     "UseAdmin": {
+      "kind": "bool",
+      "label": "以管理员权限启动奇想盒后端（上游强制管理员，缺权限会在起跑即退出； MAS 自身已提权时不重复触发 UAC，子进程自动继承管理员令牌）"
+     }
+    }
+   }
+  }
+ },
+ "emulator": {
+  "EmulatorConfig": {
+   "Info": {
+    "kind": "object",
+    "ref": "EmulatorConfig.InfoFields",
+    "fields": {
+     "Type": {
+      "kind": "enum",
+      "label": "模拟器类型",
+      "options": [
+       "general",
+       "mumu",
+       "ldplayer",
+       "emulator2"
+      ]
+     },
+     "Baselines": {
+      "kind": "json",
+      "label": "守卫的基准: {设备号: {字段: 值}}, 只记用户显式设过的字段"
+     },
+     "BossKey": {
+      "kind": "str",
+      "label": "老板键快捷键配置",
+      "raw": "JsonListString"
+     },
+     "ConfigGuard": {
+      "kind": "bool",
+      "label": "Emulator 2.0 的稳定模式：开着就把会干扰截图识别的模拟器功能压住, 启动实例前顺带确保一次, 这样新建的实例也会跟着进入安全状态。 关掉只是不再确保, **不会把那些项改回去**——不知道用户原本想要什么值。 Emulator 2.0 的配置守卫：以 MAS 存的这份设置为准, 启动前与关闭后各核验一次, 对不上就写回去。与旧雷电那套「开机拍快照关机还原」不是一回事, 见 utils/emulator2/guard.py"
+     },
+     "ForceKillBeforeLaunch": {
+      "kind": "bool",
+      "label": "启动 MuMu 实例前先关闭已在运行的实例并强力清理残留进程 用于已有非管理员实例导致新实例无法以管理员身份启动的场景; 会关掉全部实例, 多开慎用"
+     },
+     "ForceKillOnClose": {
+      "kind": "bool",
+      "label": "关闭 MuMu 时强力清理残留进程"
+     },
+     "MaxWaitTime": {
+      "kind": "int",
+      "label": "最大等待时间（秒）"
+     },
+     "Name": {
+      "kind": "str",
+      "label": "模拟器名称"
+     },
+     "Path": {
+      "kind": "str",
+      "label": "模拟器路径",
+      "default": null,
+      "raw": "EmulatorManagerPath"
+     },
+     "Paths": {
+      "kind": "str",
+      "label": "Emulator 2.0 纳管的模拟器路径列表 [{\"pathId\", \"installPath\", \"alias\", \"type\", \"version\"}]",
+      "raw": "JsonListString"
+     },
+     "Slots": {
+      "kind": "str",
+      "label": "Emulator 2.0 的设备号槽位表 [{\"slot\", \"pathId\", \"nativeIndex\", \"state\": \"active\"|\"tombstone\"}] 槽位号在本配置内单调递增分配, 移除路径写墓碑, 号码永不复用",
+      "raw": "JsonListString"
+     },
+     "StableMode": {
+      "kind": "bool",
+      "label": "Emulator 2.0: 稳定模式是否开启"
+     }
+    }
+   }
+  }
+ },
+ "setting": {
+  "GlobalConfig": {
+   "Data": {
+    "kind": "object",
+    "ref": "GlobalConfig.DataFields",
+    "fields": {
+     "IfShowNotice": {
+      "kind": "bool",
+      "label": "是否显示公告"
+     },
+     "LastMaintenanceUpdated": {
+      "kind": "str",
+      "label": "上次维护信息检查时间",
+      "raw": "datetime"
+     },
+     "LastNoticeUpdated": {
+      "kind": "str",
+      "label": "上次公告更新时间",
+      "raw": "datetime"
+     },
+     "LastStageUpdated": {
+      "kind": "str",
+      "label": "上次关卡更新时间",
+      "raw": "datetime"
+     },
+     "LastStatisticsUpload": {
+      "kind": "str",
+      "label": "上次统计上传时间",
+      "raw": "datetime"
+     },
+     "LastTelemetryActive": {
+      "kind": "str",
+      "label": "上次记录遥测日活的 UTC 日期",
+      "raw": "datetime"
+     },
+     "Maintenance": {
+      "kind": "json",
+      "label": "维护信息内容"
+     },
+     "MaintenanceETag": {
+      "kind": "str",
+      "label": "维护信息的版本标识符"
+     },
+     "Notice": {
+      "kind": "json",
+      "label": "公告内容"
+     },
+     "NoticeETag": {
+      "kind": "str",
+      "label": "公告的版本标识符"
+     },
+     "ShareAppearanceUploads": {
+      "kind": "json",
+      "label": "分享站外观上传记录：{用户名: {外观 ID: {fileId, fileKey, displayName, updatedAt}}}"
+     },
+     "Stage": {
+      "kind": "str",
+      "label": "关卡信息",
+      "raw": "Virtual[str]"
+     },
+     "StageData": {
+      "kind": "json",
+      "label": "关卡信息数据"
+     },
+     "StageETag": {
+      "kind": "str",
+      "label": "关卡数据的版本标识符"
+     },
+     "UID": {
+      "kind": "str",
+      "label": "唯一标识符",
+      "raw": "UUID"
+     }
+    }
+   },
+   "Display": {
+    "kind": "object",
+    "ref": "GlobalConfig.DisplayFields",
+    "fields": {
+     "IfEnableVirtualDisplay": {
+      "kind": "bool",
+      "label": "无人值守时是否允许 MAS 挂载虚拟显示器。 所有真实显示输出都断开后 Windows 只保留一块占位的幻影屏，它照旧上报正常的 分辨率但背后没有输出；冷启动时更会起在很小的分辨率上，把被托管的 PC 端游戏 窗口压小并被游戏写进自己的配置，之后每轮都在同一处失败。挂一块真实的虚拟屏 可从源头断掉。 需要用户自行安装 Parsec 虚拟显示驱动，MAS 不分发驱动。"
+     },
+     "VirtualDisplayMode": {
+      "kind": "enum",
+      "label": "虚拟显示器的刷新率（分辨率固定 1920x1080）。 分辨率固定是因为只有它 Windows 给 100% 缩放，再高会被自动上缩放，游戏窗口 又要面对 DPI 虚拟化。取值必须在驱动 advertise 的模式表里，否则会被 BADMODE 拒绝。",
+      "options": [
+       "1920x1080@60",
+       "1920x1080@30"
+      ]
+     }
+    }
+   },
+   "Function": {
+    "kind": "object",
+    "ref": "GlobalConfig.FunctionFields",
+    "fields": {
+     "HistoryRetentionTime": {
+      "kind": "enum",
+      "label": "历史记录保留时间（天）",
+      "options": [
+       "7",
+       "15",
+       "30",
+       "60",
+       "90",
+       "180",
+       "365",
+       "0"
+      ]
+     },
+     "IfAgreeBilibili": {
+      "kind": "bool",
+      "label": "是否同意 Bilibili 协议"
+     },
+     "IfAllowSleep": {
+      "kind": "bool",
+      "label": "是否允许睡眠"
+     },
+     "IfBlockAd": {
+      "kind": "bool",
+      "label": "是否屏蔽模拟器广告"
+     },
+     "IfEnableTelemetry": {
+      "kind": "bool",
+      "label": "是否启用匿名遥测"
+     },
+     "IfPersonalMss": {
+      "kind": "bool",
+      "label": "个人版 MSS 的专属编排（灾变防线），只对个人版项目生效， 普通版 MSS 与其它脚本都会忽略它。"
+     },
+     "IfSilence": {
+      "kind": "bool",
+      "label": "是否启用静默模式"
+     }
+    }
+   },
+   "Notify": {
+    "kind": "object",
+    "ref": "GlobalConfig.NotifyFields",
+    "fields": {
+     "AuthorizationCode": {
+      "kind": "str",
+      "label": "邮箱授权码"
+     },
+     "CMCCNewMsgApiKey": {
+      "kind": "str",
+      "label": "中国移动新消息 Channel API Key"
+     },
+     "FromAddress": {
+      "kind": "str",
+      "label": "发件地址"
+     },
+     "IfCMCCNewMsg": {
+      "kind": "bool",
+      "label": "是否启用中国移动新消息通知"
+     },
+     "IfKoishiSupport": {
+      "kind": "bool",
+      "label": "是否发送Koishi通知"
+     },
+     "IfOpenClawQQ": {
+      "kind": "bool",
+      "label": "是否启用 QQ 官方机器人通知（凭据由扫码登录流程管理）"
+     },
+     "IfPushPlyer": {
+      "kind": "bool",
+      "label": "是否推送系统通知"
+     },
+     "IfSendMail": {
+      "kind": "bool",
+      "label": "是否发送邮件"
+     },
+     "IfSendSixStar": {
+      "kind": "bool",
+      "label": "是否发送六星通知"
+     },
+     "IfSendStatistic": {
+      "kind": "bool",
+      "label": "是否发送统计信息"
+     },
+     "IfServerChan": {
+      "kind": "bool",
+      "label": "是否启用 Server 酱"
+     },
+     "KoishiServerAddress": {
+      "kind": "str",
+      "label": "Koishi WebSocket 服务器地址",
+      "raw": "UrlString"
+     },
+     "KoishiToken": {
+      "kind": "str",
+      "label": "Koishi Token"
+     },
+     "OpenClawQQAppId": {
+      "kind": "str",
+      "label": "QQ 官方机器人应用 ID（由扫码登录响应返回）"
+     },
+     "OpenClawQQClientSecret": {
+      "kind": "str",
+      "label": "QQ 官方机器人客户端密钥（由扫码登录响应返回）"
+     },
+     "OpenClawQQTargetOpenId": {
+      "kind": "str",
+      "label": "QQ 官方机器人目标用户 OpenID（由扫码登录响应返回）"
+     },
+     "SMTPServerAddress": {
+      "kind": "str",
+      "label": "SMTP 服务器地址"
+     },
+     "SendTaskResultTime": {
+      "kind": "enum",
+      "label": "任务结果推送时间",
+      "options": [
+       "不推送",
+       "任何时刻",
+       "仅失败时"
+      ]
+     },
+     "ServerChanKey": {
+      "kind": "str",
+      "label": "Server 酱密钥"
+     },
+     "ToAddress": {
+      "kind": "str",
+      "label": "收件地址"
+     }
+    }
+   },
+   "Replay": {
+    "kind": "object",
+    "ref": "GlobalConfig.ReplayFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "连接已运行的 OBS，在自动代理最终失败时保存回放。"
+     },
+     "MaxReplayCount": {
+      "kind": "int",
+      "label": "MAS 副本的保留数量，不清理 OBS 原文件。"
+     },
+     "Password": {
+      "kind": "str",
+      "label": "OBS 认证密码按现有敏感配置规则加密落盘。"
+     },
+     "Port": {
+      "kind": "int",
+      "label": "OBS WebSocket 仅连接本机。"
+     },
+     "PasswordConfigured": {
+      "kind": "str",
+      "label": "OBS 密码是否已配置，只读",
+      "default": null,
+      "raw": "Virtual[bool]"
+     }
+    }
+   },
+   "Start": {
+    "kind": "object",
+    "ref": "GlobalConfig.StartFields",
+    "fields": {
+     "IfMinimizeDirectly": {
+      "kind": "bool",
+      "label": "是否启动时直接最小化"
+     },
+     "IfSelfStart": {
+      "kind": "bool",
+      "label": "是否自动启动"
+     }
+    }
+   },
+   "UI": {
+    "kind": "object",
+    "ref": "GlobalConfig.UIFields",
+    "fields": {
+     "IfHideCloseButton": {
+      "kind": "bool",
+      "label": "是否隐藏主窗口关闭按钮"
+     },
+     "IfShowTray": {
+      "kind": "bool",
+      "label": "是否显示托盘图标"
+     },
+     "IfToTray": {
+      "kind": "bool",
+      "label": "是否关闭到托盘"
+     }
+    }
+   },
+   "Update": {
+    "kind": "object",
+    "ref": "GlobalConfig.UpdateFields",
+    "fields": {
+     "Channel": {
+      "kind": "enum",
+      "label": "更新频道",
+      "options": [
+       "stable",
+       "beta"
+      ]
+     },
+     "GitHubMirror": {
+      "kind": "enum",
+      "label": "GitHub 加速镜像 **只影响 MFW 项目包从 GitHub Release 下载这一条路**（脚本的 `Update.Source` 选 GitHub 时）：国内直连 GitHub 常年 100 多 KB/s， 359MB 的全量包要四十分钟。`Auto` 依次试镜像、全部失败再回直连； `Off` 只直连。MAS 自身的更新与初始化 clone 走前端 mirrorService， 不读这一项；Mirror 酱是另一个源，也不受它影响。",
+      "options": [
+       "Auto",
+       "Off"
+      ]
+     },
+     "IfAutoUpdate": {
+      "kind": "bool",
+      "label": "是否自动更新"
+     },
+     "MirrorChyanCDK": {
+      "kind": "str",
+      "label": "镜像站 CDK"
+     },
+     "PauseUntil": {
+      "kind": "str",
+      "label": "暂停更新截止时间，截止日期当天恢复；空值表示未暂停",
+      "default": null,
+      "raw": "datetime"
+     },
+     "ProxyAddress": {
+      "kind": "str",
+      "label": "代理地址"
+     },
+     "Source": {
+      "kind": "enum",
+      "label": "更新源",
+      "options": [
+       "GitHub",
+       "MirrorChyan",
+       "AutoSite",
+       "CNB"
+      ]
+     }
+    }
+   },
+   "Voice": {
+    "kind": "object",
+    "ref": "GlobalConfig.VoiceFields",
+    "fields": {
+     "Enabled": {
+      "kind": "bool",
+      "label": "是否启用语音"
+     },
+     "Type": {
+      "kind": "enum",
+      "label": "语音类型",
+      "options": [
+       "simple",
+       "noisy"
+      ]
+     }
+    }
+   },
+   "startup_notices": {
+    "kind": "str",
+    "raw": "list"
+   }
+  }
+ }
+}

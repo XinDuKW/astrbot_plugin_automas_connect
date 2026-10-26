@@ -1,0 +1,1204 @@
+"""AUTO-MAS 联动插件的 Plugin Pages 后端接口。
+
+前端只跟这一层打交道，所有 AUTO-MAS 调用都走 MasClient，错误统一翻译成
+HTTP 状态码，避免把 httpx 的异常栈丢给浏览器。
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from astrbot.api import logger
+from astrbot.api.web import error_response, json_response, request
+
+from .mas_api import SCRIPT_ADD_TYPES, MasError, parse_runtime_snapshot
+
+PLUGIN_NAME = "astrbot_plugin_automas_connect"
+DISPATCH_MODES = ("AutoProxy", "ScriptConfig", "CycleRun", "Update")
+
+# 功能开关，键名必须和 _conf_schema.json 里 features.items 一致。
+FEATURE_KEYS = (
+    "accounts",
+    "task_config",
+    "plans",
+    "queue",
+    "scripts",
+    "emulator",
+    "history",
+    "settings",
+    "qq_command",
+)
+
+
+class AutomasWebUIController:
+    """注册并实现联动面板所需的 Web API。"""
+
+    def __init__(self, plugin: Any, context: Any):
+        self.plugin = plugin
+        self.context = context
+        self._register_routes()
+
+    def _register_routes(self) -> None:
+        routes = (
+            ("overview", self.overview, ["GET"], "AUTO-MAS 概览"),
+            ("users", self.users, ["GET"], "托管项下的账号列表"),
+            ("user/detail", self.user_detail, ["POST"], "账号完整配置"),
+            ("user/save", self.user_save, ["POST"], "保存账号配置"),
+            ("user/create", self.user_create, ["POST"], "新建账号"),
+            ("user/delete", self.user_delete, ["POST"], "删除账号"),
+        ("user/status", self.user_status, ["POST"], "启用/停用账号"),
+            ("user/clone", self.user_clone, ["POST"], "克隆账号配置"),
+            ("plans", self.plans, ["GET"], "计划表列表"),
+            ("plan/detail", self.plan_detail, ["POST"], "计划表完整配置"),
+            ("plan/save", self.plan_save, ["POST"], "保存计划表"),
+            ("plan/create", self.plan_create, ["POST"], "新建计划表"),
+            ("plan/delete", self.plan_delete, ["POST"], "删除计划表"),
+            ("queues", self.queues, ["GET"], "调度队列列表"),
+            ("queue/detail", self.queue_detail, ["POST"], "队列详情与成员"),
+            ("queue/save", self.queue_save, ["POST"], "保存队列设置"),
+            ("queue/create", self.queue_create, ["POST"], "新建队列"),
+            ("queue/delete", self.queue_delete, ["POST"], "删除队列"),
+            ("queue/run", self.queue_run, ["POST"], "运行整个队列"),
+            ("queue/item/add", self.queue_item_add, ["POST"], "新增队列项"),
+            ("queue/item/delete", self.queue_item_delete, ["POST"], "删除队列项"),
+            ("queue/item/save", self.queue_item_save, ["POST"], "保存队列项"),
+            ("queue/item/order", self.queue_item_order, ["POST"], "队列项排序"),
+            ("queue/time/add", self.queue_time_add, ["POST"], "新增定时项"),
+            ("queue/time/save", self.queue_time_save, ["POST"], "保存定时项"),
+            ("queue/time/delete", self.queue_time_delete, ["POST"], "删除定时项"),
+            ("history/search", self.history_search, ["POST"], "搜索运行历史"),
+            ("history/detail", self.history_detail, ["POST"], "查看单次运行详情"),
+            ("script/detail", self.script_detail, ["POST"], "托管项完整配置"),
+            ("script/create", self.script_create, ["POST"], "新建托管项"),
+            ("script/delete", self.script_delete, ["POST"], "删除托管项"),
+            ("script/save", self.script_save, ["POST"], "保存托管项"),
+            ("script/order", self.script_order, ["POST"], "托管项排序"),
+            ("emulators", self.emulators, ["GET"], "模拟器列表与状态"),
+            ("emulator/detail", self.emulator_detail, ["POST"], "模拟器完整配置"),
+            ("emulator/save", self.emulator_save, ["POST"], "保存模拟器"),
+            ("emulator/create", self.emulator_create, ["POST"], "新建模拟器项"),
+            ("emulator/delete", self.emulator_delete, ["POST"], "删除模拟器项"),
+            ("emulator/operate", self.emulator_operate, ["POST"], "启停模拟器"),
+            ("emulator/search", self.emulator_search, ["POST"], "搜索本机模拟器"),
+            ("stage/options", self.stage_options, ["GET"], "理智关卡选项"),
+            ("depot/items", self.depot_items, ["GET"], "库存保持可选材料"),
+            ("customInfrast/scan", self.infrast_scan, ["POST"], "扫描自定义基建目录"),
+            ("customInfrast/import", self.infrast_import, ["POST"], "导入自定义基建排班表"),
+            ("cultivate/operators", self.cultivate_operators, ["POST"], "养成目标干员目录"),
+            ("maaend/options", self.maaend_options, ["GET"], "终末地可选项（采集路线 / 基质地点 / 控制器）"),
+            ("maaend/tasks", self.maaend_tasks, ["GET"], "终末地任务名清单"),
+            ("maafw/definition", self.maafw_definition, ["GET"], "MaaFW 任务 / 选项 / 预设定义"),
+            ("bettergi/configs", self.bettergi_configs, ["GET"], "BetterGI 一条龙配置名"),
+            ("bettergi/customGroups", self.bettergi_custom_groups, ["GET"], "BetterGI 自定义配置组"),
+            ("zzzod/catalog", self.zzzod_catalog, ["GET"], "绝区零一条龙任务目录"),
+            ("whimbox/catalog", self.whimbox_catalog, ["GET"], "奇想盒一条龙任务目录"),
+            ("oknte/configs", self.oknte_configs, ["POST"], "OK-NTE 任务流程配置"),
+            ("oknte/save", self.oknte_save, ["POST"], "保存 OK-NTE 任务流程配置"),
+            ("setting/get", self.setting_get, ["GET"], "全局设置"),
+            ("setting/save", self.setting_save, ["POST"], "保存全局设置"),
+            ("setting/test_notify", self.setting_test_notify, ["POST"], "测试通知"),
+            ("webhooks", self.webhooks, ["GET"], "通知渠道列表"),
+            ("webhook/detail", self.webhook_detail, ["POST"], "通知渠道完整配置"),
+            ("webhook/save", self.webhook_save, ["POST"], "保存通知渠道"),
+            ("webhook/create", self.webhook_create, ["POST"], "新建通知渠道"),
+            ("webhook/delete", self.webhook_delete, ["POST"], "删除通知渠道"),
+            ("webhook/test", self.webhook_test, ["POST"], "测试通知渠道"),
+            ("dispatch/start", self.dispatch_start, ["POST"], "启动托管任务"),
+            ("dispatch/stop", self.dispatch_stop, ["POST"], "停止托管任务"),
+        )
+        for endpoint, handler, methods, description in routes:
+            self.context.register_web_api(
+                f"/{PLUGIN_NAME}/{endpoint}",
+                handler,
+                methods,
+                description,
+            )
+
+    # ---- 通用工具 ----
+
+    def _build_client(self) -> Any:
+        return self.plugin.build_client()
+
+    def _features(self) -> dict[str, bool]:
+        """读取插件配置里的功能开关，缺省一律开启。"""
+        config = getattr(self.plugin, "config", None)
+        raw = config.get("features") if isinstance(config, dict) else None
+        if not isinstance(raw, dict):
+            raw = {}
+        return {key: bool(raw.get(key, True)) for key in FEATURE_KEYS}
+
+    @staticmethod
+    async def _payload() -> dict[str, Any] | None:
+        body = await request.json(default={})
+        if not isinstance(body, dict):
+            return None
+        return body
+
+    @staticmethod
+    def _text(value: Any) -> str:
+        return value.strip() if isinstance(value, str) else ""
+
+    # ---- 接口实现 ----
+
+    async def overview(self) -> Any:
+        client = self._build_client()
+        try:
+            scripts = await client.get_scripts()
+            snapshot = await client.runtime_snapshot()
+            plans = await client.get_plans()
+        except MasError as exc:
+            logger.warning(f"[automas] 概览读取失败: {exc}")
+            return json_response(
+                {
+                    "online": False,
+                    "error": str(exc),
+                    "scripts": [],
+                    "plans": [],
+                    "running": [],
+                    "features": self._features(),
+                }
+            )
+        name_by_id = {item["uid"]: item["name"] for item in scripts}
+        running = [
+            {**task, "name": name_by_id.get(task["scriptId"], "")}
+            for task in parse_runtime_snapshot(snapshot)
+        ]
+        return json_response(
+            {
+                "online": True,
+                "scripts": scripts,
+                "plans": plans,
+                "running": running,
+                "baseUrl": client.base_url,
+                "features": self._features(),
+            }
+        )
+
+    async def users(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            accounts = await self._build_client().get_users(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"users": accounts})
+
+    async def user_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            logger.warning(
+                "[automas] user/detail body 解析失败 content_type=%s query=%s",
+                request.content_type,
+                request.query,
+            )
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        if not script_id or not user_id:
+            logger.warning(
+                "[automas] user/detail 缺参数 body=%s query=%s",
+                body,
+                request.query,
+            )
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        client = self._build_client()
+        try:
+            data = await client.get_user_raw(script_id, user_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        # 计划表列表用来填 Stage.StageMode 的下拉；取不到不算致命，给空列表让前端退回 Fixed。
+        plan_items: list[dict[str, Any]] = []
+        try:
+            for plan in await client.get_plans():
+                info = (plan.get("data") or {}).get("Info") or {}
+                plan_items.append(
+                    {
+                        "uid": str(plan.get("uid") or ""),
+                        "type": str(plan.get("type") or ""),
+                        "name": str(info.get("Name") or plan.get("uid") or ""),
+                    }
+                )
+        except MasError:
+            plan_items = []
+        return json_response({"userId": user_id, "config": data, "plans": plan_items})
+
+    async def user_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        data = body.get("data")
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        if not isinstance(data, dict):
+            return error_response("data 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_user(script_id, user_id, data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "userId": user_id})
+
+    async def user_create(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            created = await self._build_client().create_user(
+                script_id, self._text(body.get("name"))
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(created)
+
+    async def user_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        try:
+            await self._build_client().delete_user(script_id, user_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"userId": user_id, "deleted": True})
+
+    async def user_status(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        raw_status = body.get("status")
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        if isinstance(raw_status, str):
+            enabled = raw_status.strip().lower() in ("1", "true", "yes", "on")
+        else:
+            enabled = bool(raw_status)
+        try:
+            saved = await self._build_client().set_user_status(
+                script_id, user_id, enabled
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"userId": user_id, "status": saved})
+
+    async def user_clone(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        source_user_id = self._text(body.get("sourceUserId"))
+        name = self._text(body.get("name"))
+        if not script_id or not source_user_id:
+            return error_response("缺少 scriptId 或 sourceUserId", status_code=400)
+        try:
+            created = await self._build_client().clone_user(script_id, source_user_id, name)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(created)
+
+    # ---- 计划表 ----
+
+    async def plans(self) -> Any:
+        try:
+            items = await self._build_client().get_plans()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(
+            {
+                "plans": [
+                    {
+                        "uid": item["uid"],
+                        "type": item["type"],
+                        "name": str(((item.get("data") or {}).get("Info") or {}).get("Name") or item["uid"]),
+                        "mode": str(((item.get("data") or {}).get("Info") or {}).get("Mode") or ""),
+                        "rotateDays": ((item.get("data") or {}).get("Info") or {}).get("RotateDays"),
+                    }
+                    for item in items
+                ]
+            }
+        )
+
+    async def plan_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        plan_id = self._text(body.get("planId"))
+        if not plan_id:
+            return error_response("缺少 planId", status_code=400)
+        try:
+            data = await self._build_client().get_plan_raw(plan_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"planId": plan_id, "config": data})
+
+    async def plan_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        plan_id = self._text(body.get("planId"))
+        data = body.get("data")
+        if not plan_id:
+            return error_response("缺少 planId", status_code=400)
+        if not isinstance(data, dict):
+            return error_response("data 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_plan(plan_id, data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "planId": plan_id})
+
+    async def plan_create(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        plan_type = self._text(body.get("type")) or "MaaPlan"
+        if plan_type not in ("MaaPlan", "MaaEndPlan"):
+            return error_response(f"未知的计划表类型: {plan_type}", status_code=400)
+        try:
+            created = await self._build_client().add_plan(plan_type)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(created)
+
+    async def plan_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        plan_id = self._text(body.get("planId"))
+        if not plan_id:
+            return error_response("缺少 planId", status_code=400)
+        try:
+            await self._build_client().delete_plan(plan_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"planId": plan_id, "deleted": True})
+
+    # ---- 调度队列 ----
+
+    async def queues(self) -> Any:
+        try:
+            items = await self._build_client().get_queues()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(
+            {
+                "queues": [
+                    {
+                        "uid": item["uid"],
+                        "name": str(((item.get("data") or {}).get("Info") or {}).get("Name") or item["uid"]),
+                        "timeEnabled": ((item.get("data") or {}).get("Info") or {}).get("TimeEnabled") is True,
+                        "startUpMode": str(((item.get("data") or {}).get("Info") or {}).get("StartUpMode") or ""),
+                    }
+                    for item in items
+                ]
+            }
+        )
+
+    async def queue_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        client = self._build_client()
+        try:
+            cfg = await client.get_queue_raw(queue_id)
+            raw_items = await client.get_queue_items(queue_id)
+            raw_times = await client.get_time_sets(queue_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        script_items: list[dict[str, Any]] = []
+        try:
+            script_items = await client.get_scripts()
+        except MasError:
+            script_items = []
+        name_by_id = {item["uid"]: item["name"] for item in script_items}
+        items = []
+        for entry in raw_items:
+            info = (entry.get("data") or {}).get("Info") or {}
+            script_id = str(info.get("ScriptId") or "-")
+            items.append(
+                {
+                    "uid": entry["uid"],
+                    "scriptId": script_id,
+                    # "-" 是 MAS 里“未选择”的占位
+                    "scriptName": "" if script_id in ("", "-") else name_by_id.get(script_id, script_id),
+                    "schedule": (entry.get("data") or {}).get("Schedule") or {},
+                }
+            )
+        times = []
+        for entry in raw_times:
+            info = dict((entry.get("data") or {}).get("Info") or {})
+            info.setdefault("Enabled", True)
+            info.setdefault("Days", [])
+            info.setdefault("Time", "")
+            times.append({"uid": entry["uid"], "info": info})
+        return json_response(
+            {
+                "queueId": queue_id,
+                "config": cfg,
+                "items": items,
+                "times": times,
+                "scripts": [
+                    {"uid": item["uid"], "name": item["name"], "typeLabel": item["typeLabel"]}
+                    for item in script_items
+                ],
+            }
+        )
+
+    async def queue_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        info = body.get("info")
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        if not isinstance(info, dict):
+            return error_response("info 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_queue(queue_id, {"Info": info})
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "queueId": queue_id})
+
+    async def queue_create(self) -> Any:
+        try:
+            created = await self._build_client().add_queue()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(created)
+
+    async def queue_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        try:
+            await self._build_client().delete_queue(queue_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"deleted": True, "queueId": queue_id})
+
+    async def queue_run(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        try:
+            task_id = await self._build_client().start_task(queue_id, "AutoProxy")
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"taskId": task_id})
+
+    async def queue_item_add(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        try:
+            created = await self._build_client().add_queue_item(queue_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(created)
+
+    async def queue_item_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        item_id = self._text(body.get("queueItemId"))
+        if not queue_id or not item_id:
+            return error_response("缺少 queueId 或 queueItemId", status_code=400)
+        try:
+            await self._build_client().delete_queue_item(queue_id, item_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"deleted": True, "queueItemId": item_id})
+
+    async def queue_item_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        item_id = self._text(body.get("queueItemId"))
+        script_id = self._text(body.get("scriptId"))
+        if not queue_id or not item_id:
+            return error_response("缺少 queueId 或 queueItemId", status_code=400)
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        payload: dict[str, Any] = {"Info": {"ScriptId": script_id}}
+        schedule = body.get("schedule")
+        if isinstance(schedule, dict) and schedule:
+            payload["Schedule"] = schedule
+        try:
+            await self._build_client().update_queue_item(queue_id, item_id, payload)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "queueItemId": item_id})
+
+    async def queue_item_order(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        raw_list = body.get("indexList")
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        if not isinstance(raw_list, list) or not raw_list:
+            return error_response("indexList 必须是非空数组", status_code=400)
+        index_list = [str(item) for item in raw_list]
+        try:
+            await self._build_client().reorder_queue_items(queue_id, index_list)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True})
+
+    async def queue_time_add(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        try:
+            created = await self._build_client().add_time_set(queue_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(created)
+
+    async def queue_time_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        time_set_id = self._text(body.get("timeSetId"))
+        info = body.get("info")
+        if not queue_id or not time_set_id:
+            return error_response("缺少 queueId 或 timeSetId", status_code=400)
+        if not isinstance(info, dict):
+            return error_response("info 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_time_set(queue_id, time_set_id, {"Info": info})
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "timeSetId": time_set_id})
+
+    async def queue_time_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        queue_id = self._text(body.get("queueId"))
+        time_set_id = self._text(body.get("timeSetId"))
+        if not queue_id or not time_set_id:
+            return error_response("缺少 queueId 或 timeSetId", status_code=400)
+        try:
+            await self._build_client().delete_time_set(queue_id, time_set_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"deleted": True, "timeSetId": time_set_id})
+
+    # ---- 运行历史 ----
+
+    async def history_search(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        start = self._text(body.get("startDate"))
+        end = self._text(body.get("endDate"))
+        mode = (self._text(body.get("mode")) or "DAILY").upper()
+        if mode not in ("DAILY", "WEEKLY", "MONTHLY"):
+            mode = "DAILY"
+        if not start or not end:
+            return error_response("缺少 startDate 或 endDate", status_code=400)
+        try:
+            raw = await self._build_client().search_history(start, end, mode)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        days = []
+        for day in sorted(raw.keys(), reverse=True):
+            users = raw.get(day)
+            if not isinstance(users, dict):
+                continue
+            entries = []
+            for name, item in users.items():
+                info = item if isinstance(item, dict) else {}
+                runs = []
+                for run in info.get("index") or []:
+                    if not isinstance(run, dict):
+                        continue
+                    runs.append(
+                        {
+                            "date": str(run.get("date") or ""),
+                            "status": str(run.get("status") or ""),
+                            "result": str(run.get("result") or ""),
+                            "jsonFile": str(run.get("jsonFile") or ""),
+                        }
+                    )
+                entries.append(
+                    {
+                        "name": str(name),
+                        "runs": runs,
+                        "errorInfo": info.get("error_info") or {},
+                    }
+                )
+            entries.sort(key=lambda row: row["name"])
+            days.append({"date": day, "users": entries})
+        return json_response({"mode": mode, "days": days})
+
+    async def history_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        json_path = self._text(body.get("jsonPath"))
+        if not json_path:
+            return error_response("缺少 jsonPath", status_code=400)
+        try:
+            data = await self._build_client().get_history_data(json_path)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        log_text = data.get("log_content")
+        if not isinstance(log_text, str):
+            log_text = ""
+        return json_response(
+            {
+                "jsonPath": json_path,
+                "logContent": log_text,
+                "config": data,
+            }
+        )
+
+    async def dispatch_start(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        mode = self._text(body.get("mode")) or "AutoProxy"
+        raw_user_ids = body.get("userIds")
+        user_ids = [str(item) for item in raw_user_ids] if isinstance(raw_user_ids, list) else None
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        if mode not in DISPATCH_MODES:
+            return error_response(f"未知的任务模式: {mode}", status_code=400)
+        try:
+            task_id = await self._build_client().start_task(script_id, mode, user_ids)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"taskId": task_id})
+
+    async def dispatch_stop(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        task_id = self._text(body.get("taskId"))
+        if not task_id:
+            return error_response("缺少 taskId", status_code=400)
+        try:
+            await self._build_client().stop_task(task_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"stopped": True, "taskId": task_id})
+
+    # ---- 托管项 ----
+
+    async def script_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            data = await self._build_client().get_script_raw(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"scriptId": script_id, "config": data})
+
+    async def script_create(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_type = self._text(body.get("type")) or "MAA"
+        if script_type not in {item[0] for item in SCRIPT_ADD_TYPES}:
+            return error_response(f"未知的脚本类型: {script_type}", status_code=400)
+        copy_from = self._text(body.get("copyFrom"))
+        name = self._text(body.get("name"))
+        client = self._build_client()
+        try:
+            created = await client.add_script(script_type, copy_from)
+            script_id = created["scriptId"]
+            if not script_id:
+                return error_response("AUTO-MAS 未返回新的托管项 ID", status_code=502)
+            if name:
+                data = created["data"] or await client.get_script_raw(script_id)
+                info = data.setdefault("Info", {})
+                info["Name"] = name
+                await client.update_script(script_id, data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"scriptId": script_id, "name": name})
+
+    async def script_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            await self._build_client().delete_script(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"deleted": True, "scriptId": script_id})
+
+    async def script_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        data = body.get("data")
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        if not isinstance(data, dict):
+            return error_response("data 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_script(script_id, data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "scriptId": script_id})
+
+    async def script_order(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        raw_list = body.get("indexList")
+        if not isinstance(raw_list, list) or not raw_list:
+            return error_response("indexList 必须是非空数组", status_code=400)
+        index_list = [self._text(item) for item in raw_list if self._text(item)]
+        if not index_list:
+            return error_response("indexList 里没有有效 ID", status_code=400)
+        try:
+            await self._build_client().reorder_scripts(index_list)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"order": index_list})
+
+    # ---- 模拟器 ----
+
+    async def emulators(self) -> Any:
+        client = self._build_client()
+        try:
+            items = await client.get_emulators()
+            try:
+                status = await client.emulator_status()
+            except MasError:
+                status = {}
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        result = []
+        for item in items:
+            uid = item["uid"]
+            devices = []
+            for slot_index, device in (status.get(uid) or {}).items():
+                if not isinstance(device, dict):
+                    continue
+                devices.append(
+                    {
+                        "index": str(slot_index),
+                        "title": str(device.get("title") or ""),
+                        "status": device.get("status"),
+                        "adb": str(device.get("adb_address") or ""),
+                    }
+                )
+            devices.sort(key=lambda row: row["index"])
+            result.append(
+                {
+                    "uid": uid,
+                    "name": item["name"],
+                    "type": item["type"],
+                    "path": item["path"],
+                    "devices": devices,
+                }
+            )
+        return json_response({"emulators": result})
+
+    async def emulator_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        emulator_id = self._text(body.get("emulatorId"))
+        if not emulator_id:
+            return error_response("缺少 emulatorId", status_code=400)
+        try:
+            items = await self._build_client().get_emulators()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        for item in items:
+            if item["uid"] == emulator_id:
+                return json_response({"emulatorId": emulator_id, "config": item["data"]})
+        return error_response("找不到这个模拟器项", status_code=404)
+
+    async def emulator_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        emulator_id = self._text(body.get("emulatorId"))
+        data = body.get("data")
+        if not emulator_id:
+            return error_response("缺少 emulatorId", status_code=400)
+        if not isinstance(data, dict):
+            return error_response("data 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_emulator(emulator_id, data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "emulatorId": emulator_id})
+
+    async def emulator_create(self) -> Any:
+        try:
+            created = await self._build_client().add_emulator()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"emulatorId": created["emulatorId"], "config": created["data"]})
+
+    async def emulator_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        emulator_id = self._text(body.get("emulatorId"))
+        if not emulator_id:
+            return error_response("缺少 emulatorId", status_code=400)
+        try:
+            await self._build_client().delete_emulator(emulator_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"deleted": True, "emulatorId": emulator_id})
+
+    async def emulator_operate(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        emulator_id = self._text(body.get("emulatorId"))
+        operate = self._text(body.get("operate")) or "open"
+        index = self._text(body.get("index")) or "0"
+        if not emulator_id:
+            return error_response("缺少 emulatorId", status_code=400)
+        if operate not in ("open", "close", "show"):
+            return error_response("operate 只支持 open / close / show", status_code=400)
+        try:
+            await self._build_client().operate_emulator(emulator_id, operate, index)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"emulatorId": emulator_id, "operate": operate})
+
+    async def emulator_search(self) -> Any:
+        try:
+            items = await self._build_client().search_emulators()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"emulators": items})
+
+    # ---- 全局设置 / 通知渠道 ----
+
+    async def stage_options(self) -> Any:
+        try:
+            items = await self._build_client().get_stage_options()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"stages": items})
+
+    async def infrast_scan(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            scan = await self._build_client().scan_infrast_files(
+                script_id, self._text(body.get("dir"))
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"scan": scan})
+
+    async def infrast_import(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        json_file = self._text(body.get("jsonFile"))
+        if not script_id or not user_id or not json_file:
+            return error_response("缺少 scriptId / userId / jsonFile", status_code=400)
+        try:
+            result = await self._build_client().import_infrast_file(
+                script_id, user_id, json_file
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"imported": result})
+
+    async def depot_items(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            items = await self._build_client().get_depot_items(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"items": items})
+
+    async def maaend_tasks(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            tasks = await self._build_client().scan_maaend_tasks(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"tasks": tasks})
+
+    async def maaend_options(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            options = await self._build_client().get_maaend_options(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"options": options})
+
+    async def maafw_definition(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            definition = await self._build_client().scan_maafw_definition(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"definition": definition})
+    async def whimbox_catalog(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            catalog = await self._build_client().get_whimbox_catalog(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"catalog": catalog})
+
+    async def oknte_configs(self) -> Any:
+        body = await request.json(default={})
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        try:
+            payload = await self._build_client().get_oknte_configs(script_id, user_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(payload)
+
+    async def oknte_save(self) -> Any:
+        body = await request.json(default={})
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        configs = body.get("configs")
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        if not isinstance(configs, dict) or not configs:
+            return error_response("configs 必须是非空的 {文件名: 配置} 对象", status_code=400)
+        try:
+            result = await self._build_client().update_oknte_configs(
+                script_id, user_id, configs
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(result)
+    async def bettergi_configs(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            items = await self._build_client().get_bettergi_one_dragon_configs(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"configs": items})
+
+    async def bettergi_custom_groups(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        use_mas = (self._text(request.query.get("useMasConfig")) or "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        try:
+            items = await self._build_client().get_bettergi_custom_groups(
+                script_id,
+                self._text(request.query.get("userId")),
+                self._text(request.query.get("configName")),
+                use_mas,
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"groups": items})
+
+    async def zzzod_catalog(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        try:
+            items = await self._build_client().get_zzzod_catalog(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"catalog": items})
+
+    async def cultivate_operators(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        try:
+            items = await self._build_client().get_cultivate_operators(script_id, user_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"operators": items})
+
+    async def setting_get(self) -> Any:
+        try:
+            data = await self._build_client().get_setting()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"config": data, "masked": "Replay.Password"})
+
+    async def setting_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        data = body.get("data")
+        if not isinstance(data, dict) or not data:
+            return error_response("data 必须是非空对象", status_code=400)
+        # 掩码字段原样写回会把密码改成掩码串，直接拒绝
+        replay = data.get("Replay")
+        if isinstance(replay, dict) and "Password" in replay:
+            return error_response("Replay.Password 是掩码，不能这样写回", status_code=400)
+        try:
+            await self._build_client().update_setting(data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True})
+
+    async def setting_test_notify(self) -> Any:
+        try:
+            await self._build_client().test_notify()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"sent": True})
+
+    async def webhooks(self) -> Any:
+        try:
+            items = await self._build_client().get_webhooks()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(
+            {
+                "webhooks": [
+                    {
+                        "uid": item["uid"],
+                        "name": item["name"],
+                        "enabled": item["enabled"],
+                        "method": str(((item["data"] or {}).get("Data") or {}).get("Method") or ""),
+                        "url": str(((item["data"] or {}).get("Data") or {}).get("Url") or ""),
+                    }
+                    for item in items
+                ]
+            }
+        )
+
+    async def webhook_detail(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        webhook_id = self._text(body.get("webhookId"))
+        if not webhook_id:
+            return error_response("缺少 webhookId", status_code=400)
+        try:
+            items = await self._build_client().get_webhooks()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        for item in items:
+            if item["uid"] == webhook_id:
+                return json_response({"webhookId": webhook_id, "config": item["data"]})
+        return error_response("找不到这个通知渠道", status_code=404)
+
+    async def webhook_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        webhook_id = self._text(body.get("webhookId"))
+        data = body.get("data")
+        if not webhook_id:
+            return error_response("缺少 webhookId", status_code=400)
+        if not isinstance(data, dict):
+            return error_response("data 必须是对象", status_code=400)
+        try:
+            await self._build_client().update_webhook(webhook_id, data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "webhookId": webhook_id})
+
+    async def webhook_create(self) -> Any:
+        try:
+            created = await self._build_client().add_webhook()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"webhookId": created["webhookId"], "config": created["data"]})
+
+    async def webhook_delete(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        webhook_id = self._text(body.get("webhookId"))
+        if not webhook_id:
+            return error_response("缺少 webhookId", status_code=400)
+        try:
+            await self._build_client().delete_webhook(webhook_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"deleted": True, "webhookId": webhook_id})
+
+    async def webhook_test(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        data = body.get("data")
+        if not isinstance(data, dict):
+            return error_response("data 必须是对象", status_code=400)
+        try:
+            await self._build_client().test_webhook(data)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"sent": True})
+

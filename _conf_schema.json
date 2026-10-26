@@ -1,0 +1,82 @@
+{
+  "mas_base_url": {
+    "type": "string",
+    "description": "AUTO-MAS 后端地址",
+    "hint": "AstrBot 和 AUTO-MAS 同机时保持默认即可；分开部署就填 AUTO-MAS 的局域网地址。",
+    "default": "http://127.0.0.1:36163"
+  },
+  "request_timeout": {
+    "type": "int",
+    "description": "接口超时（秒）",
+    "default": 15
+  },
+  "require_admin": {
+    "type": "bool",
+    "description": "只有管理员能用 /mas 指令",
+    "hint": "关掉之后群里任何人都能启动/停止托管任务。",
+    "default": true
+  },
+  "notify_umo": {
+    "type": "string",
+    "description": "失败通知目标会话",
+    "hint": "填 umo（如 aiocqhttp:GroupMessage:123456），留空则只在日志里记。"
+  },
+  "auto_restart_seconds": {
+    "type": "int",
+    "description": "任务失败后自动重启等待秒数",
+    "hint": "0 表示不自动重启。AUTO-MAS 自己的失败重试耗尽后才会走到这里。",
+    "default": 0
+  },
+  "features": {
+    "type": "object",
+    "description": "功能开关",
+    "hint": "关掉的功能不会出现在面板里（指令也会拒绝）。只保留你要用的那几块。",
+    "items": {
+      "accounts": {
+        "type": "bool",
+        "description": "账号管理（新建/克隆/编辑/删除/启停）",
+        "default": true
+      },
+      "task_config": {
+        "type": "bool",
+        "description": "任务参数（理智关卡/基建/剿灭/活动）",
+        "default": true
+      },
+      "plans": {
+        "type": "bool",
+        "description": "计划表",
+        "default": true
+      },
+      "queue": {
+        "type": "bool",
+        "description": "调度队列与定时任务",
+        "default": true
+      },
+      "scripts": {
+        "type": "bool",
+        "description": "托管项管理（新建/删除/排序）",
+        "default": true
+      },
+      "emulator": {
+        "type": "bool",
+        "description": "模拟器",
+        "default": true
+      },
+      "history": {
+        "type": "bool",
+        "description": "运行历史",
+        "default": true
+      },
+      "settings": {
+        "type": "bool",
+        "description": "全局设置与通知渠道",
+        "default": true
+      },
+      "qq_command": {
+        "type": "bool",
+        "description": "QQ /mas 指令",
+        "default": true
+      }
+    }
+  }
+}
