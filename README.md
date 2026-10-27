@@ -14,8 +14,9 @@ astrbot_plugin_automas_connect/
 ├─ main.py              /mas 指令 + 任务卡死兜底
 ├─ mas_api.py           AUTO-MAS HTTP 客户端（所有接口调用都在这里）
 ├─ webui.py             Plugin Pages 后端路由（50+ 条 /api/plugin/...）
-├─ _conf_schema.json    AstrBot 插件配置：后端地址、超时、9 个功能开关
+├─ _conf_schema.json    AstrBot 插件配置：后端地址、超时、10 个功能开关
 ├─ metadata.yaml
+├─ CHANGELOG.md         版本说明（和 Releases 同步）
 ├─ requirements.txt     httpx（AstrBot 自带）
 ├─ logo.png
 ├─ pages/console/       面板前端：index.html / app.js / style.css
@@ -46,7 +47,7 @@ astrbot_plugin_automas_connect/
 
 ### 功能开关
 
-`features` 分组下 9 个开关，默认全开。关掉哪项，面板里对应入口和指令一起消失：
+`features` 分组下 10 个开关，默认全开。关掉哪项，面板里对应入口和指令一起消失：
 
 | 键 | 管什么 |
 | --- | --- |
@@ -54,6 +55,7 @@ astrbot_plugin_automas_connect/
 | `task_config` | 任务配置页（理管关卡、任务开关、剿灭基建） |
 | `plans` | 计划表视图 |
 | `queue` | 调度队列与定时视图 |
+| `scheduler` | 调度中心视图（运行范围、实时状态、日志、电源操作） |
 | `scripts` | 托管项管理（新建 / 编辑 / 排序 / 运行 / 删除） |
 | `emulator` | 模拟器视图（开关机、槽位状态） |
 | `history` | 运行历史视图 |
@@ -87,6 +89,7 @@ AstrBot 后台 → 插件 → AUTO-MAS调度台 → 打开页面。顶部一排�
 
 - 左侧列表每条右侧有常显的 ↑ ↓ 按钮，点了直接写回 AUTO-MAS 的顺序；「+ 新建」支持 14 种类型（MAA / MaaEnd / M9A / MaaFW / HSR / BetterGI / ZzzOd / BAAH / Whimbox / MSS / Okww / OkNte / SRC / General），还能选一个现有托管项当模板复制（连账号一起复制）。
 - 「运行」可选四种模式：按托管项（AutoProxy）、按脚本配置（ScriptConfig）、仅更新（Update）、循环运行（CycleRun）。
+- 正在跑的任务显示在页面顶部一条通栏状态条里（哪个托管项、什么模式、一键停止），不跟选中的托管项绑在一起；对应托管项在左边列表里也会挂一个「运行中」角标。
 - 托管项配置是**单独一个抽屉**（右上「托管配置」按钮进，跟账号编辑完全分开）：编 Path、绑定的模拟器与槽位、运行策略（各时限、重试次数、更新处理），另有完整 JSON 兜底。
 - 删除托管项会连带删掉它下面的账号，按钮会二次确认。
 - 抽屉里有没保存的改动时，点空白 / 按 ESC 关掉会问一句，三选：取消、不保存、保存（选保存就直接写回 AUTO-MAS，写失败不关抽屉）。
@@ -114,6 +117,8 @@ AstrBot 后台 → 插件 → AUTO-MAS调度台 → 打开页面。顶部一排�
 
 **MaaEnd（MaaEndConfig）** 的任务配置也做了专门处理：采集模式（分散 / 集中）、采集路线（按地区分组、可多选）、基质养成（随机 / 地区 / 目标模式 + 指定地区 + 指定武器，按武器种类分组）、危境预演档位、理智任务类型、奖励组、运送委托来源等，全部是中文下拉或芯片多选；「每日只做一次的任务」直接列出 MaaEnd 自带的中文任务名给你勾。这些候选来自 AUTO-MAS 的 `scripts/maaend/options` 接口和 MaaEnd 自己的 `locales/interface/zh_cn.json`，不写死。
 
+另外两块原本只能改 JSON 的字段也接上了：「培养道具目标」（`Task.SupplyPlanLimits`，上游叫库存目标）现在是一张 16 行的表格，折金票 / 协议棱柱 / 作战记录经验 / 强固模具 / 象限拟合液……每行填目标数量，填 0 或留空就是不纳入规划；「库存任务领取方式」（`Task.ProtocolSpaceObtainModeClaim`）是「单倍领取 / 优先双倍领取」的下拉。改动仍然只提交你碰过的那一项，字符串形态的 JSON 会原样保持。
+
 **OK-WW（鸣潮）**：字段名是英文、说明又长，页面上换成 MAS 界面的叫法——「消耗体力刷取」（无音区 / 凝素领域 / 模拟领域）、「刷什么材料」（贝币 / 角色经验 / 武器经验）、两个「F2 列表里第几个」序号、「需要时用梦魇巢穴完成日常声骸」、「每日任务后运行的附加任务」（芯片多选）。值仍按上游要求存英文。
 
 **OK-NTE（异环）**：它的具体任务参数不在账号配置里（`Task` 只有 `TaskIndex` / `ExitOnFinish` 两个键），而在 ok-nte 自己目录下的 7 份 json 里，所以任务页改成一整套配置编辑器：
@@ -125,7 +130,7 @@ AstrBot 后台 → 插件 → AUTO-MAS调度台 → 打开页面。顶部一排�
 
  字段和候选都由 AUTO-MAS 的 `scripts/oknte/configs/list` 下发（`scripts/oknte/configs/batch-update` 写回），改哪份文件就只提交哪份；上游加新字段会自动出现，不用改插件。
 
-**BetterGI / ZZZ-OD（一条龙编排）**：任务配置里多出两条「一条龙」编排块。BetterGI 列出当前要跑的组（顺序就是执行顺序，可加、删、上移下移、一键套用默认 8 组），下面是自定义配置组（名字 + 启用）。ZZZ-OD 列出当前编排的任务（中文名 + 启用勾选 + 上移下移移除），再下面是还没加入的任务候选（点一下加到最后，可调参数的任务带「可调参数」标签），最下面选跑完之后做什么（无 / 关闭游戏 / 关机）。它的任务页里「游戏 / 一条龙」这些分组默认都是收起的，点标题展开。候选和中文名来自 AUTO-MAS 自己的 scripts/zzzod/catalog 和 scripts/bettergi/one-dragon/custom-groups，不写死。
+**BetterGI / ZZZ-OD（一条龙编排）**：任务配置里多出两条「一条龙」编排块。BetterGI 列出当前要跑的组（顺序就是执行顺序，可加、删、上移下移、一键套用默认 8 组），下面是自定义配置组（名字 + 启用）。ZZZ-OD 列出当前编排的任务（中文名 + 启用勾选 + 上移下移移除），再下面是还没加入的任务候选（点一下加到最后，可调参数的任务带「可调参数」标签），最下面选跑完之后做什么（无 / 关闭游戏 / 关机）。它的任务页里「游戏 / 一条龙」这些分组默认都是收起的，点标题展开。展开之后加一条任务、改一个数字都只刷新内容，折叠块不会自己收回去；重新打开账号或切回任务页才回到默认收起的初始状态。候选和中文名来自 AUTO-MAS 自己的 scripts/zzzod/catalog 和 scripts/bettergi/one-dragon/custom-groups，不写死。
 
 **MaaFW（识宝小助手这类 MaaFramework 项目）**：账号配置里其实只有 `Task.SelectedPreset` 和 `Task.TaskSnapshot`，真正的编排全在后者那串 JSON 里（`taskOrder` / `taskChecked` / `taskOptions`）。插件会去读脚本目录下的 `interface.json`（含它 import 的子文件），把任务、选项、官方预设解析成「任务清单 + 每个任务可展开的选项」：勾选 = 这次要跑，↑↓ 调顺序，选项按上游类型自动出开关 / 下拉 / 输入框；预设那一栏可以一键套用「日常-简化版 / 完整版 / 建议单独运行」。任务名和选项名都来自脚本自己的 interface，换一个 MaaFramework 项目也不用改代码。改动只写回 `TaskSnapshot`（和 `SelectedPreset`），其它字段不动。
 **M9A / MSS 同款编排**：这两个也是 MaaFramework 项目，账号配置结构和 MaaFW 一模一样（`Task.SelectedPreset` + `Task.TaskSnapshot`），所以直接复用上面那套任务编排界面；换项目只要脚本目录里有 `interface.json` 就行，任务名、选项、预设都从界面定义文件读。
@@ -158,6 +163,17 @@ python tools/gen_config_schema.py --source "Y:\AUTO-MAS\repo\app\models\config\s
 
 - 源码路径要指到 108 上 AUTO-MAS 的 **`repo\app\models\config\script.py`**（`repo\` 才是带源码的仓库目录，`app\` 是编译产物）。
 - 源码里没写 `description` 的字段没有中文名，靠 app.js 里的 `SCRIPT_KEY_LABELS`（103 条）和按组覆盖的 `GROUP_KEY_LABELS` 兜底；`_uicheck/scriptform.mjs` 会检查每种类型有没有裸英文漏出来。
+
+### 调度中心
+
+把 AUTO-MAS 的「调度中心」搬了过来，页面开着时每 3 秒拉一次运行快照（走 HTTP，不用接 WebSocket）：
+
+- 左上「运行来源」是**一个下拉**，跟 AUTO-MAS 一样把队列和脚本混在一起列：`队列 - 日常`、`队列 - 临时`、`脚本 - MAA - MAA`……选队列就按队列里排好的顺序连着跑一串脚本（模式只有自动代理 / 循环运行两样），选脚本就只跑那一个（四种模式：自动代理 / 循环运行 / 按脚本配置 / 仅更新）；切换过的来源会缓存账号列表，切回来不用再等，后端也是一次并发把队列里各脚本的账号拉齐；
+- 队列模式下会多一个「从指定托管继续」下拉，选了就从那一项开始跑，排在它前面的会被 AUTO-MAS 标成跳过；
+- 下面勾**本次运行范围**：队列模式按脚本分组列出这个队列会碰到的所有账号（AUTO-MAS 的 `queueUserIds`），只勾这次要跑的，停用的账号置灰不能勾；某个脚本一个都不勾就等于这次跳过它；「全选 / 取消全选」一键切；
+- 右侧按任务列出每个脚本和它的账号状态（等待 / 运行中 / 跳过 / 失败 / 完成），循环运行的任务还会列出下一轮待跑项和到点时间；每个任务能单独停止、展开看实时日志尾部；
+- 左下「任务完成后电源操作」：关机 / 强制关机 / 重启 / 休眠 / 睡眠 / 退出 AUTO-MAS / 重启 AUTO-MAS / 注销，选了就写进 AUTO-MAS（跑完才执行）；真有倒计时时显示剩余秒数，可以「取消倒计时」拦下来。
+- 右下「已启用定时」列出开着定时队列的托管项。
 
 ### 计划表
 
@@ -217,9 +233,13 @@ AUTO-MAS 源码里没写 `description` 的字段就没有中文说明，靠插�
 
 ## 开发与测试
 
-- `_uicheck/` 是一套 jsdom 冒烟测试（放在插件目录外，不进部署），用真实 DOM 跑 `app.js`，覆盖各视图渲染、抽屉交互、每种脚本类型的任务配置。`node run_all.mjs` 一次全跑，目前 22 套 388 项。
+- `_uicheck/` 是一套 jsdom 冒烟测试（放在插件目录外，不进部署），用真实 DOM 跑 `app.js`，覆盖各视图渲染、抽屉交互、每种脚本类型的任务配置。`node run_all.mjs` 一次全跑，目前 24 套 468 项。
 - 后端接口都注册在 `webui.py` 的 `_register_routes` 里。**响应体里别用 `data` 当键**：AstrBot 插件页的 bridge 遇到 `data` 只把它的值交给页面，详情类接口统一用 `config`。
 - 字段 schema 用 `tools/gen_config_schema.py` 从 AUTO-MAS 源码重新生成，别手改 `app.js` 顶部那几个常量。
+
+## 更新日志
+
+每个版本改了什么写在 [CHANGELOG.md](CHANGELOG.md)，和 Releases 的说明一致。
 
 ## 致谢
 

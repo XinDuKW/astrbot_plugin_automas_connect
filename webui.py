@@ -6,6 +6,7 @@ HTTP 状态码，避免把 httpx 的异常栈丢给浏览器。
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from astrbot.api import logger
@@ -15,6 +16,23 @@ from .mas_api import SCRIPT_ADD_TYPES, MasError, parse_runtime_snapshot
 
 PLUGIN_NAME = "astrbot_plugin_automas_connect"
 DISPATCH_MODES = ("AutoProxy", "ScriptConfig", "CycleRun", "Update")
+
+# 任务完成后的电源操作。真实枚举是大驼峰，小写会被 AUTO-MAS 判 422。
+POWER_OPTIONS = (
+    ("NoAction", "不操作"),
+    ("Shutdown", "关机"),
+    ("ShutdownForce", "强制关机"),
+    ("Reboot", "重启"),
+    ("Hibernate", "休眠"),
+    ("Sleep", "睡眠"),
+    ("KillSelf", "退出 AUTO-MAS"),
+    ("RestartSelf", "重启 AUTO-MAS"),
+    ("Logoff", "注销"),
+)
+POWER_SIGNALS = tuple(value for value, _ in POWER_OPTIONS)
+
+# 调度台日志只传最近这一段，和 AUTO-MAS 官方「调度台仅显示最近内容」一致
+SCHED_LOG_TAIL = 12000
 
 # 功能开关，键名必须和 _conf_schema.json 里 features.items 一致。
 FEATURE_KEYS = (
@@ -27,6 +45,7 @@ FEATURE_KEYS = (
     "history",
     "settings",
     "qq_command",
+    "scheduler",
 )
 
 
@@ -105,6 +124,11 @@ class AutomasWebUIController:
             ("webhook/test", self.webhook_test, ["POST"], "测试通知渠道"),
             ("dispatch/start", self.dispatch_start, ["POST"], "启动托管任务"),
             ("dispatch/stop", self.dispatch_stop, ["POST"], "停止托管任务"),
+            ("scheduler", self.scheduler, ["GET"], "调度中心"),
+            ("scheduler/running", self.scheduler_running, ["GET"], "运行中任务与电源倒计时"),
+            ("scheduler/power", self.scheduler_power, ["POST"], "设置任务完成后的电源操作"),
+            ("scheduler/power/cancel", self.scheduler_power_cancel, ["POST"], "取消电源倒计时"),
+            ("scheduler/scope", self.scheduler_scope, ["GET"], "队列本次能跑到的脚本与账号"),
         )
         for endpoint, handler, methods, description in routes:
             self.context.register_web_api(
@@ -684,20 +708,147 @@ class AutomasWebUIController:
             }
         )
 
+    # ---- 调度中心 ----
+
+    async def scheduler(self) -> Any:
+        """调度中心首屏：运行中任务 + 定时托管项 + 账号范围 + 电源操作。"""
+        client = self._build_client()
+        try:
+            scripts, snapshot, queues = await asyncio.gather(
+                client.get_scripts(),
+                client.runtime_snapshot(),
+                client.get_queues(),
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(
+            {
+                "tasks": [_trim_task_log(task) for task in parse_runtime_snapshot(snapshot)],
+                "scheduled": _parse_scheduled(snapshot),
+                "scripts": scripts,
+                "queues": queues,
+                "power": await self._power_state(client),
+                "powerOptions": [{"value": v, "label": l} for v, l in POWER_OPTIONS],
+                "modes": list(DISPATCH_MODES),
+            }
+        )
+
+    async def scheduler_running(self) -> Any:
+        """轮询用：只返回任务与电源倒计时，比首屏轻。"""
+        client = self._build_client()
+        try:
+            snapshot = await client.runtime_snapshot()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(
+            {
+                "tasks": [_trim_task_log(task) for task in parse_runtime_snapshot(snapshot)],
+                "scheduled": _parse_scheduled(snapshot),
+                "power": await self._power_state(client),
+            }
+        )
+
+    @staticmethod
+    async def _power_state(client: Any) -> dict[str, Any]:
+        """电源操作读取失败不该拖垮整个调度台，单独兜住。"""
+        signal = ""
+        countdown: dict[str, Any] = {}
+        try:
+            signal = await client.power_signal()
+        except MasError:
+            signal = ""
+        try:
+            countdown = await client.power_countdown()
+        except MasError:
+            countdown = {}
+        return {"signal": signal, "countdown": countdown}
+
+    async def scheduler_power(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        signal = self._text(body.get("signal"))
+        if signal not in POWER_SIGNALS:
+            return error_response(f"未知的电源操作: {signal}", status_code=400)
+        try:
+            await self._build_client().set_power(signal)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"signal": signal})
+
+    async def scheduler_power_cancel(self) -> Any:
+        try:
+            await self._build_client().cancel_power()
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"cancelled": True})
+
+    async def scheduler_scope(self) -> Any:
+        """队列模式下的运行范围：这个队列会跑到哪些脚本，每个脚本下有哪些账号。"""
+        queue_id = self._text(request.query.get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        client = self._build_client()
+        try:
+            scripts = await client.get_scripts()
+            items = await client.get_queue_items(queue_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        name_by_id = {str(item["uid"]): item["name"] for item in scripts}
+        script_ids: list[str] = []
+        for item in items:
+            info = (item.get("data") or {}).get("Info") or {}
+            script_id = str(info.get("ScriptId") or "")
+            if script_id in ("", "-") or script_id not in name_by_id:
+                continue
+            if script_id not in script_ids:
+                script_ids.append(script_id)
+        async def _users(script_id: str) -> list[dict[str, Any]]:
+            try:
+                return await client.get_users(script_id)
+            except MasError:
+                return []
+
+        fetched = await asyncio.gather(*[_users(script_id) for script_id in script_ids])
+        scope = [
+            {
+                "scriptId": script_id,
+                "scriptName": name_by_id.get(script_id, script_id),
+                "users": [
+                    {"uid": user["uid"], "name": user["name"], "status": user["status"]}
+                    for user in users
+                ],
+            }
+            for script_id, users in zip(script_ids, fetched)
+        ]
+        return json_response({"queueId": queue_id, "items": scope})
+
     async def dispatch_start(self) -> Any:
         body = await self._payload()
         if body is None:
             return error_response("请求内容必须是 JSON 对象", status_code=400)
-        script_id = self._text(body.get("scriptId"))
+        # 队列任务传 taskId（队列 ID），单个托管项沿用 scriptId，两者都认。
+        task_id_in = self._text(body.get("taskId")) or self._text(body.get("scriptId"))
         mode = self._text(body.get("mode")) or "AutoProxy"
+        resume_from = self._text(body.get("resumeFromScriptId"))
         raw_user_ids = body.get("userIds")
         user_ids = [str(item) for item in raw_user_ids] if isinstance(raw_user_ids, list) else None
-        if not script_id:
-            return error_response("缺少 scriptId", status_code=400)
+        raw_queue_user_ids = body.get("queueUserIds")
+        queue_user_ids = None
+        if isinstance(raw_queue_user_ids, dict):
+            queue_user_ids = {
+                str(key): [str(item) for item in value]
+                for key, value in raw_queue_user_ids.items()
+                if isinstance(value, list)
+            }
+        if not task_id_in:
+            return error_response("缺少 taskId", status_code=400)
         if mode not in DISPATCH_MODES:
             return error_response(f"未知的任务模式: {mode}", status_code=400)
         try:
-            task_id = await self._build_client().start_task(script_id, mode, user_ids)
+            task_id = await self._build_client().start_task(
+                task_id_in, mode, user_ids, queue_user_ids, resume_from
+            )
         except MasError as exc:
             return error_response(str(exc), status_code=502)
         return json_response({"taskId": task_id})
@@ -1201,4 +1352,33 @@ class AutomasWebUIController:
         except MasError as exc:
             return error_response(str(exc), status_code=502)
         return json_response({"sent": True})
+
+
+def _trim_task_log(task: dict[str, Any]) -> dict[str, Any]:
+    """长日志只留尾部，避免每 3 秒轮询搬几十 KB。"""
+    log = task.get("log")
+    if isinstance(log, str) and len(log) > SCHED_LOG_TAIL:
+        return {**task, "log": "…（前面内容已省略）…\n" + log[-SCHED_LOG_TAIL:]}
+    return task
+
+
+def _parse_scheduled(snapshot: Any) -> list[dict[str, str]]:
+    """当前启用了定时的托管项（它们到点会自己跑，调度台要列出来）。"""
+    raw = snapshot.get("scheduledScripts") if isinstance(snapshot, dict) else None
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        script_id = str(item.get("scriptId") or "")
+        if not script_id:
+            continue
+        out.append(
+            {
+                "scriptId": script_id,
+                "scriptType": str(item.get("scriptType") or ""),
+            }
+        )
+    return out
 

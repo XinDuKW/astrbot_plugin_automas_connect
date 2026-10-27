@@ -426,6 +426,16 @@
        "官服"
       ]
      },
+     "SanityStrategy": {
+      "kind": "enum",
+      "label": "理智任务策略：指定任务、原生策略或库存目标",
+      "default": "MAS",
+      "options": [
+       "MAS",
+       "Native",
+       "Inventory"
+      ]
+     },
      "SanityMode": {
       "kind": "str",
       "label": "理智任务配置模式",
@@ -464,6 +474,11 @@
       "kind": "bool",
       "label": "是否发送邮件"
      },
+     "IfSendInventory": {
+      "kind": "bool",
+      "label": "是否推送本轮养成材料状态",
+      "default": false
+     },
      "IfSendStatistic": {
       "kind": "bool",
       "label": "是否发送统计信息"
@@ -495,6 +510,15 @@
     "kind": "object",
     "ref": "MaaEndUserConfig.TaskFields",
     "fields": {
+     "SupplyPlanLimits": {
+      "kind": "json",
+      "label": "上游库存目标输入值，原字段名与字符串值透传"
+     },
+     "ProtocolSpaceObtainModeClaim": {
+      "kind": "str",
+      "label": "库存任务领取方式，由 MaaEnd 声明",
+      "default": "ObtainScaling2"
+     },
      "AutoCollectCommonRoutes": {
       "kind": "str",
       "label": "自动采集通用资源路线",
@@ -532,15 +556,9 @@
       "itemKind": "str"
      },
      "CrisisDrills": {
-      "kind": "enum",
-      "label": "危境预演任务",
-      "options": [
-       "AdvancedProgression1",
-       "AdvancedProgression2",
-       "AdvancedProgression3",
-       "AdvancedProgression4",
-       "AdvancedProgression5"
-      ]
+      "kind": "str",
+      "label": "危境预演任务，由 MaaEnd 声明",
+      "default": "AdvancedProgression1"
      },
      "DailyOnceTasks": {
       "kind": "str",
@@ -1381,7 +1399,7 @@
      },
      "TaskSnapshot": {
       "kind": "json",
-      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
+      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）， 可选 taskSchedules（``{实例 id: {weekdays: [1..7]}}``，ISO 星期 1=周一，升序去重；只在本机今天的星期在其中时运行这一份，开跑建计划时判一次；七天全选即不限制、不写这一项，空表或非法值按不限制处理）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
      }
     }
    }
@@ -1551,7 +1569,7 @@
      },
      "TaskSnapshot": {
       "kind": "json",
-      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
+      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）， 可选 taskSchedules（``{实例 id: {weekdays: [1..7]}}``，ISO 星期 1=周一，升序去重；只在本机今天的星期在其中时运行这一份，开跑建计划时判一次；七天全选即不限制、不写这一项，空表或非法值按不限制处理）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
      }
     }
    }
@@ -1734,7 +1752,7 @@
      },
      "TaskSnapshot": {
       "kind": "json",
-      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
+      "label": "当前用户的任务快照，结构为 taskOrder/taskChecked/taskOptions/globalOptions， 可选 taskLabels（用户给某一份实例起的显示名，只影响界面显示）， 可选 taskSchedules（``{实例 id: {weekdays: [1..7]}}``，ISO 星期 1=周一，升序去重；只在本机今天的星期在其中时运行这一份，开跑建计划时判一次；七天全选即不限制、不写这一项，空表或非法值按不限制处理）； 除 globalOptions 外各键都是任务实例 id，同一个任务可以重复入队（见 MaaFWTaskSnapshot）； globalOptions 是全局选项的值，每个用户一份、所有任务共用。 默认的空快照在建用户、读用户与运行前按项目默认（预设或默认勾选）补成实打实的队列， 见 app/task/MaaFW/tools/embedded/default_snapshot.py"
      }
     }
    }
@@ -3163,6 +3181,15 @@
       "kind": "int",
       "label": "单账号运行总时限（分钟），包含等待和全部重试"
      },
+     "IfSaveLogBundle": {
+      "kind": "bool",
+      "label": "任务失败时是否按 MaaEnd 的导出规则打包运行日志"
+     },
+     "LogBundlePath": {
+      "kind": "str",
+      "label": "任务失败时保存日志包的目录，留空使用 MAS 目录下的 debug/maaend",
+      "raw": "FolderPath"
+     },
      "ProxyTimesLimit": {
       "kind": "int",
       "label": "每日代理次数限制"
@@ -3773,7 +3800,7 @@
     "fields": {
      "Templates": {
       "kind": "str",
-      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
+      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?, taskSchedules?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
       "raw": "JsonListString"
      }
     }
@@ -4079,7 +4106,7 @@
     "fields": {
      "Templates": {
       "kind": "str",
-      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
+      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?, taskSchedules?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
       "raw": "JsonListString"
      }
     }
@@ -4384,7 +4411,7 @@
     "fields": {
      "Templates": {
       "kind": "str",
-      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
+      "label": "用户页任务队列的自定义模板，同一脚本的用户共用。JSON 列表，每项 ``{\"name\": 模板名, \"snapshot\": {taskOrder, taskChecked, taskOptions, taskLabels?, taskSchedules?}}``， 快照形状同用户的 Task.TaskSnapshot（键是任务实例 id），但不含受管任务、密码字段 与全局选项（globalOptions 归各用户自己）； 名称在脚本内唯一。运行流程不读它，只由用户页套用到某个用户的队列。",
       "raw": "JsonListString"
      }
     }
@@ -5488,6 +5515,26 @@
       "kind": "str",
       "label": "SMTP 服务器地址"
      },
+     "OpenClawQQTargetType": {
+      "kind": "enum",
+      "label": "QQ 官方机器人通知接收位置",
+      "default": "c2c",
+      "options": [
+       "c2c",
+       "group",
+       "all"
+      ]
+     },
+     "OpenClawQQGroupOpenIds": {
+      "kind": "list",
+      "label": "QQ 官方机器人自动发现的群 OpenID",
+      "itemKind": "str"
+     },
+     "OpenClawQQRejectedGroupOpenIds": {
+      "kind": "list",
+      "label": "QQ 官方机器人已明确拒收的群 OpenID",
+      "itemKind": "str"
+     },
      "SendTaskResultTime": {
       "kind": "enum",
       "label": "任务结果推送时间",
@@ -5515,9 +5562,9 @@
       "kind": "bool",
       "label": "连接已运行的 OBS，在自动代理最终失败时保存回放。"
      },
-     "MaxReplayCount": {
+     "VideoStorageLimitMiB": {
       "kind": "int",
-      "label": "MAS 副本的保留数量，不清理 OBS 原文件。"
+      "label": "历史视频容量上限（MiB），仅回收历史视频，不清理 OBS 原文件。"
      },
      "Password": {
       "kind": "str",
@@ -5579,6 +5626,30 @@
        "beta"
       ]
      },
+     "Downloader": {
+      "kind": "enum",
+      "label": "下载器: builtin 用内置 httpx, fluxdown 调 FluxDown CLI 多线程",
+      "options": [
+       "builtin",
+       "fluxdown"
+      ]
+     },
+     "FluxdownPath": {
+      "kind": "str",
+      "label": "FluxDown CLI 所在目录（包含 portable 标记文件）；空则自动查找"
+     },
+     "FluxdownSegments": {
+      "kind": "int",
+      "label": "FluxDown 多线程分段数 (1-32)"
+     },
+     "FluxdownServerMode": {
+      "kind": "bool",
+      "label": "FluxDown 断点续传服务（server 模式）：常驻 agent+daemon，跨进程续传"
+     },
+     "FluxdownTakeoverAll": {
+      "kind": "bool",
+      "label": "FluxDown 接管所有自动化脚本更新（预留项，后端尚未实现，前端已禁用展示）"
+     },
      "GitHubMirror": {
       "kind": "enum",
       "label": "GitHub 加速镜像 **只影响 MFW 项目包从 GitHub Release 下载这一条路**（脚本的 `Update.Source` 选 GitHub 时）：国内直连 GitHub 常年 100 多 KB/s， 359MB 的全量包要四十分钟。`Auto` 依次试镜像、全部失败再回直连； `Off` 只直连。MAS 自身的更新与初始化 clone 走前端 mirrorService， 不读这一项；Mirror 酱是另一个源，也不受它影响。",
@@ -5590,6 +5661,11 @@
      "IfAutoUpdate": {
       "kind": "bool",
       "label": "是否自动更新"
+     },
+     "LastUpdateHistory": {
+      "kind": "list",
+      "label": "最近的下载历史记录（最多保留 50 条）",
+      "itemKind": "object"
      },
      "MirrorChyanCDK": {
       "kind": "str",

@@ -4,10 +4,11 @@ short_desc: 在 QQ 和面板里管理 AUTO-MAS 的多脚本托管
 desc: >-
   把本机 AUTO-MAS 的多脚本托管接进 AstrBot：QQ 指令查运行状态、启停任务；
   面板里管托管项与账号、各脚本的任务参数、计划表、调度队列与定时、模拟器、
-  运行历史、全局设置与通知渠道，日常操作不用切回桌面端。
+  运行历史、全局设置与通知渠道，还有带运行范围勾选和实时日志的调度中心，
+  日常操作不用切回桌面端。
 
   依赖 AUTO-MAS 的本地 REST API（默认 http://127.0.0.1:36163）。
-version: 1.0.0
+version: 1.1.0
 author: XinDuKW
 repo: https://github.com/XinDuKW/astrbot_plugin_automas_connect
 tags:

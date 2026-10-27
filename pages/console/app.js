@@ -240,6 +240,24 @@ const elements = {
   settingEditor: document.getElementById("setting-editor"),
   settingTest: document.getElementById("setting-test"),
   webhookCreate: document.getElementById("webhook-create"),
+  schedTarget: document.getElementById("sched-target"),
+  schedTargetHint: document.getElementById("sched-target-hint"),
+  schedResume: document.getElementById("sched-resume"),
+  schedResumeField: document.getElementById("sched-resume-field"),
+  schedMode: document.getElementById("sched-mode"),
+  schedUsers: document.getElementById("sched-users"),
+  schedUsersAll: document.getElementById("sched-users-all"),
+  schedUsersNone: document.getElementById("sched-users-none"),
+  schedScopeCount: document.getElementById("sched-scope-count"),
+  schedStart: document.getElementById("sched-start"),
+  schedPowerBox: document.getElementById("sched-power"),
+  schedPowerApply: document.getElementById("sched-power-apply"),
+  schedPowerCancel: document.getElementById("sched-power-cancel"),
+  schedCountdown: document.getElementById("sched-countdown"),
+  schedTitle: document.getElementById("sched-title"),
+  schedRefresh: document.getElementById("sched-refresh"),
+  schedTasks: document.getElementById("sched-tasks"),
+  schedScheduled: document.getElementById("sched-scheduled"),
   toast: document.getElementById("toast"),
 };
 
@@ -292,6 +310,27 @@ const state = {
   editingWebhook: null,
   busy: false,
   toastTimer: null,
+  schedTasks: [],
+  schedScheduled: [],
+  schedPower: {},
+  schedPowerOptions: [],
+  schedSource: "script",
+  schedTarget: "",
+  schedScopeLoading: false,
+  schedScopeCache: {},
+  schedScriptId: "",
+  schedUsers: [],
+  schedQueues: [],
+  schedQueueId: "",
+  schedScopeItems: [],
+  schedSelectedUsers: null,
+  schedOpenLogs: [],
+  schedTimer: null,
+  schedSigTasks: "",
+  schedSigScheduled: "",
+  schedSigPower: "",
+  taskFoldScope: "",
+  taskFoldOpen: [],
   editSnapshot: "",
   scriptSnapshot: "",
 };
@@ -379,6 +418,10 @@ function render() {
   const scripts = overview.scripts || [];
   const running = overview.running || [];
   const plans = overview.plans || [];
+  const runningIds = {};
+  running.forEach(function (task) {
+    if (task && task.scriptId) runningIds[task.scriptId] = true;
+  });
 
   elements.metrics.scripts.textContent = String(scripts.length);
   elements.metrics.running.textContent = String(running.length);
@@ -387,9 +430,9 @@ function render() {
   elements.scriptList.innerHTML = scripts.length
     ? scripts
         .map(
-          (item) => `<li class="script-item ${item.uid === state.selectedScript ? "is-active" : ""}" data-uid="${escapeHtml(item.uid)}">
+          (item) => `<li class="script-item ${item.uid === state.selectedScript ? "is-active" : ""}${runningIds[item.uid] ? " is-running" : ""}" data-uid="${escapeHtml(item.uid)}">
             <div class="script-name">${escapeHtml(item.name)}</div>
-            <div class="script-meta">${escapeHtml(item.typeLabel)}${item.status ? "" : " · 已停用"}</div>
+            <div class="script-meta">${escapeHtml(item.typeLabel)}${item.status ? "" : " · 已停用"}${runningIds[item.uid] ? " · 运行中" : ""}</div>
             <div class="script-actions"><button class="mini-button script-arrow" type="button" title="上移" aria-label="上移" data-up="${escapeHtml(item.uid)}">↑</button><button class="mini-button script-arrow" type="button" title="下移" aria-label="下移" data-down="${escapeHtml(item.uid)}">↓</button></div>
           </li>`,
         )
@@ -423,6 +466,7 @@ const VIEW_FEATURE = {
   emulator: "emulator",
   history: "history",
   settings: "settings",
+  scheduler: "scheduler",
 };
 
 function applyFeatures() {
@@ -458,7 +502,7 @@ function renderRunning(running) {
   }
   elements.runningPanel.innerHTML = `<div class="running-panel">
     <p class="hint">正在运行的任务</p>
-    ${running
+    <div class="running-rows">${running
       .map(
         (task) => `<div class="running-row">
           <span>${escapeHtml(task.name || task.taskId)} · ${escapeHtml(
@@ -467,7 +511,7 @@ function renderRunning(running) {
           <button class="mini-button is-danger" data-task="${escapeHtml(task.taskId)}" type="button"><i class=&quot;mdi mdi-stop&quot;></i> 停止</button>
         </div>`,
       )
-      .join("")}
+      .join("")}</div>
   </div>`;
   elements.runningPanel.querySelectorAll("[data-task]").forEach((node) => {
     node.addEventListener("click", () => stopTask(node.dataset.task));
@@ -503,11 +547,655 @@ function switchView(name) {
     if (!state.emulators.length) loadEmulators();
     else renderEmulatorList();
   }
+  if (name === "scheduler" && featureOn("scheduler")) {
+    loadScheduler();
+    startSchedPolling();
+  } else {
+    stopSchedPolling();
+  }
   if (name === "settings" && featureOn("settings")) {
     if (!state.settings) loadSettings();
     else renderSettingGroups();
     loadWebhooks();
   }
+}
+
+
+// ---- 调度中心 ----
+
+const SCHED_STATUS_LABELS = {
+  等待: "等待",
+  运行: "运行中",
+  跳过: "跳过",
+  异常: "失败",
+  完成: "完成",
+};
+
+const SCHED_STATUS_CLASS = {
+  等待: "is-waiting",
+  运行: "is-running",
+  跳过: "is-skip",
+  异常: "is-error",
+  完成: "is-done",
+};
+
+function schedStatusText(status) {
+  const key = String(status ?? "").trim();
+  if (!key) return "—";
+  return SCHED_STATUS_LABELS[key] || key;
+}
+
+function schedStatusClass(status) {
+  return SCHED_STATUS_CLASS[String(status ?? "").trim()] || "";
+}
+
+function schedScriptList() {
+  return (state.overview && state.overview.scripts) || [];
+}
+
+function schedScriptName(scriptId) {
+  const id = String(scriptId ?? "");
+  if (!id) return "—";
+  const hit = schedScriptList().find((item) => item.uid === id);
+  if (hit) return hit.name || id;
+  return id.slice(0, 8);
+}
+
+const SCHED_SCRIPT_MODES = [
+  ["AutoProxy", "自动代理（按托管项配置跑）"],
+  ["CycleRun", "循环运行（跑完接着下一轮）"],
+  ["ScriptConfig", "按脚本自己的配置跑"],
+  ["Update", "仅更新脚本"],
+];
+
+const SCHED_QUEUE_MODES = [
+  ["AutoProxy", "自动代理（按队列顺序跑）"],
+  ["CycleRun", "循环运行（队列循环）"],
+];
+
+function schedQueueList() {
+  return state.schedQueues || [];
+}
+
+function schedQueueName(item) {
+  const info = (item && item.data && item.data.Info) || {};
+  return String(info.Name || (item && item.uid) || "");
+}
+
+function schedQueueOf() {
+  const list = schedQueueList();
+  if (state.schedQueueId && list.some((item) => item.uid === state.schedQueueId)) {
+    return state.schedQueueId;
+  }
+  return list.length ? list[0].uid : "";
+}
+
+// 运行范围统一成「脚本 → 账号」两段，单个托管项就是只有一组的特例。
+function schedScopeRows() {
+  if (state.schedSource === "queue") return state.schedScopeItems || [];
+  const scriptId = schedScriptOf();
+  if (!scriptId) return [];
+  return [{ scriptId: scriptId, scriptName: schedScriptName(scriptId), users: state.schedUsers || [] }];
+}
+
+function schedScopeUsers() {
+  const out = [];
+  schedScopeRows().forEach((row) => {
+    (row.users || []).forEach((user) => out.push(user));
+  });
+  return out;
+}
+
+function renderSchedModes() {
+  if (!elements.schedMode) return;
+  const current = elements.schedMode.value;
+  const list = state.schedSource === "queue" ? SCHED_QUEUE_MODES : SCHED_SCRIPT_MODES;
+  const keep = list.some((item) => item[0] === current) ? current : list[0][0];
+  elements.schedMode.innerHTML = list
+    .map((pair) => {
+      const selected = pair[0] === keep ? " selected" : "";
+      return '<option value="' + pair[0] + '"' + selected + ">" + pair[1] + "</option>";
+    })
+    .join("");
+}
+
+// 运行来源合成一个下拉：queue:<队列 uid> 或 script:<托管项 uid>。
+function schedTargetValue() {
+  if (state.schedSource === "queue") return "queue:" + (state.schedQueueId || "");
+  return "script:" + (state.schedScriptId || schedScriptOf());
+}
+
+function setSchedTarget(value) {
+  const text = String(value || "");
+  const cut = text.indexOf(":");
+  const kind = cut > 0 ? text.slice(0, cut) : "";
+  const id = cut > 0 ? text.slice(cut + 1) : "";
+  if (kind === "queue") {
+    state.schedSource = "queue";
+    state.schedQueueId = id;
+    state.schedTarget = "queue:" + id;
+  } else {
+    state.schedSource = "script";
+    state.schedScriptId = id;
+    state.schedTarget = "script:" + id;
+  }
+}
+
+function renderSchedTargets() {
+  if (!elements.schedTarget) return;
+  const queues = schedQueueList();
+  const scripts = schedScriptList();
+  if (state.schedSource === "queue" && !state.schedQueueId) state.schedQueueId = schedQueueOf();
+  if (state.schedSource !== "queue" && !state.schedScriptId) state.schedScriptId = schedScriptOf();
+  const current = schedTargetValue();
+  state.schedTarget = current;
+  const groups = [];
+  if (queues.length) {
+    groups.push(
+      '<optgroup label="调度队列">' +
+        queues
+          .map((item) => {
+            const value = "queue:" + item.uid;
+            const selected = value === current ? " selected" : "";
+            return '<option value="' + escapeHtml(value) + '"' + selected + ">队列 - " + escapeHtml(schedQueueName(item)) + "</option>";
+          })
+          .join("") +
+        "</optgroup>"
+    );
+  }
+  if (scripts.length) {
+    groups.push(
+      '<optgroup label="单个脚本">' +
+        scripts
+          .map((item) => {
+            const value = "script:" + item.uid;
+            const selected = value === current ? " selected" : "";
+            const extra = item.typeLabel || item.type || "";
+            const label = "脚本 - " + (item.name || item.uid) + (extra ? " - " + extra : "");
+            return '<option value="' + escapeHtml(value) + '"' + selected + ">" + escapeHtml(label) + "</option>";
+          })
+          .join("") +
+        "</optgroup>"
+    );
+  }
+  elements.schedTarget.innerHTML = groups.length
+    ? groups.join("")
+    : '<option value="">没有可用的托管项或队列</option>';
+  if (elements.schedTargetHint) {
+    elements.schedTargetHint.textContent =
+      state.schedSource === "queue" ? "按队列里的任务顺序依次跑" : "只跑这一个脚本，账号在下面勾";
+  }
+  const isQueue = state.schedSource === "queue";
+  if (elements.schedResumeField) elements.schedResumeField.classList.toggle("is-hidden", !isQueue);
+  if (elements.schedResume) {
+    const keep = elements.schedResume.value;
+    const rows = state.schedScopeItems || [];
+    const opts = ['<option value="">（默认：从第一个开始）</option>'];
+    rows.forEach((row) => {
+      const selected = row.scriptId === keep ? " selected" : "";
+      opts.push(
+        '<option value="' + escapeHtml(row.scriptId) + '"' + selected + ">" +
+          escapeHtml(row.scriptName || schedScriptName(row.scriptId)) +
+          "</option>"
+      );
+    });
+    elements.schedResume.innerHTML = opts.join("");
+  }
+  renderSchedModes();
+}
+
+function schedScriptOf() {
+  const list = schedScriptList();
+  if (state.schedScriptId && list.some((item) => item.uid === state.schedScriptId)) {
+    return state.schedScriptId;
+  }
+  return list.length ? list[0].uid : "";
+}
+
+
+function schedUsableUsers() {
+  return schedScopeUsers().filter((user) => user.status !== false);
+}
+
+function schedPickedIds() {
+  if (state.schedSelectedUsers === null) return schedUsableUsers().map((user) => user.uid);
+  return state.schedSelectedUsers.slice();
+}
+
+function schedEmptyHint() {
+  if (state.schedSource !== "queue") return "这个托管项下还没有账号。";
+  if (!state.schedQueueId) return "先在上面选一个调度队列。";
+  return "这个队列里的任务项还没选托管项，先去「队列」页给它们选上。";
+}
+function renderSchedUsers() {
+  if (!elements.schedUsers) return;
+  if (state.schedScopeLoading) {
+    elements.schedUsers.innerHTML = '<p class="hint">正在读托管项与账号…</p>';
+    if (elements.schedScopeCount) elements.schedScopeCount.textContent = "";
+    return;
+  }
+  const rows = schedScopeRows();
+  const picked = schedPickedIds();
+  const total = rows.reduce((sum, row) => sum + (row.users || []).length, 0);
+  if (!total) {
+    elements.schedUsers.innerHTML = '<p class="hint">' + escapeHtml(schedEmptyHint()) + "</p>";
+  } else {
+    const multi = rows.length > 1;
+    elements.schedUsers.innerHTML = rows
+      .map((row) => {
+        const chips = (row.users || [])
+          .map((user) => {
+            const usable = user.status !== false;
+            const checked = usable && picked.includes(user.uid) ? " checked" : "";
+            const disabled = usable ? "" : " disabled";
+            const suffix = usable ? "" : "（未启用）";
+            return (
+              '<label class="sched-user' + (usable ? "" : " is-off") + '">' +
+              '<input type="checkbox" data-sched-user="' + escapeHtml(user.uid) + '"' + checked + disabled + ">" +
+              "<span>" + escapeHtml(user.name || user.uid) + suffix + "</span>" +
+              "</label>"
+            );
+          })
+          .join("");
+        const head = multi
+          ? '<span class="sched-scope-name">' + escapeHtml(row.scriptName || schedScriptName(row.scriptId)) + "</span>"
+          : "";
+        return '<div class="sched-scope-group">' + head + chips + "</div>";
+      })
+      .join("");
+  }
+  if (elements.schedScopeCount) {
+    const usable = schedUsableUsers();
+    elements.schedScopeCount.textContent = usable.length ? "已选 " + picked.length + "/" + usable.length : "";
+  }
+}
+function schedUserSpan(user) {
+  return (
+    '<span class="sched-user ' + schedStatusClass(user.status) + '">' +
+    escapeHtml(user.name || "账号") + " · " + escapeHtml(schedStatusText(user.status)) +
+    "</span>"
+  );
+}
+
+function schedTaskBlock(task) {
+  const taskId = String(task.taskId || "");
+  const openLogs = state.schedOpenLogs || [];
+  const logOpen = openLogs.includes(taskId);
+  const flags = [];
+  if (task.isCycle) flags.push('<span class="sched-flag">循环</span>');
+  if (task.stopping) flags.push('<span class="sched-flag is-danger">停止中</span>');
+  const scripts = (task.taskInfo || [])
+    .map((script) => {
+      const users = (script.users || []).map(schedUserSpan).join("");
+      return (
+        '<div class="sched-script">' +
+        '<div class="sched-script-head">' +
+        "<span>" + escapeHtml(script.name || schedScriptName(script.scriptId)) + "</span>" +
+        '<span class="sched-status ' + schedStatusClass(script.status) + '">' + escapeHtml(schedStatusText(script.status)) + "</span>" +
+        "</div>" +
+        '<div class="sched-users">' + (users || '<span class="hint">没有账号</span>') + "</div>" +
+        "</div>"
+      );
+    })
+    .join("");
+  const cycle = (task.cycleNext || [])
+    .map((item) => {
+      const meta = [];
+      if (item.nextRunAt) meta.push(isoToLocalText(item.nextRunAt));
+      if (item.isDue) meta.push("已到点");
+      if (item.isRunning) meta.push("运行中");
+      return (
+        "<li><span>" + escapeHtml(item.scriptName || schedScriptName(item.scriptId)) + "</span>" +
+        '<span class="hint">' + escapeHtml(meta.join(" · ")) + "</span></li>"
+      );
+    })
+    .join("");
+  const log = task.log || "";
+  return (
+    '<article class="sched-task">' +
+    '<header class="sched-task-head">' +
+    '<span class="sched-task-main">' +
+    '<span class="sched-task-title">' + escapeHtml(MODE_LABELS[task.mode] || task.mode || "任务") + "</span>" +
+    flags.join("") +
+    "</span>" +
+    '<span class="head-actions">' +
+    (log ? '<button class="mini-button" data-sched-log="' + escapeHtml(taskId) + '" type="button">' + (logOpen ? "收起日志" : "日志") + "</button>" : "") +
+    '<button class="mini-button is-danger" data-sched-stop="' + escapeHtml(taskId) + '" type="button">停止</button>' +
+    "</span>" +
+    "</header>" +
+    '<div class="sched-scripts">' + (scripts || '<p class="hint">刚提交，状态还没回来。</p>') + "</div>" +
+    (cycle ? '<ul class="sched-cycle">' + cycle + "</ul>" : "") +
+    (log ? '<pre class="sched-log' + (logOpen ? "" : " is-hidden") + '" data-sched-logbox="' + escapeHtml(taskId) + '">' + escapeHtml(log) + "</pre>" : "") +
+    "</article>"
+  );
+}
+
+function renderSchedTasks(force) {
+  if (!elements.schedTasks) return;
+  const tasks = state.schedTasks || [];
+  const sig = JSON.stringify(tasks);
+  if (!force && sig === state.schedSigTasks) return;
+  state.schedSigTasks = sig;
+  if (!tasks.length) {
+    elements.schedTasks.innerHTML = '<p class="hint">现在没有在跑的任务。左边选好托管项和账号，点「开始执行」。</p>';
+    if (elements.schedTitle) elements.schedTitle.textContent = "运行中";
+    return;
+  }
+  elements.schedTasks.innerHTML = tasks.map(schedTaskBlock).join("");
+  if (elements.schedTitle) elements.schedTitle.textContent = "运行中 " + tasks.length;
+  (state.schedOpenLogs || []).forEach((taskId) => {
+    const box = elements.schedTasks.querySelector('[data-sched-logbox="' + taskId + '"]');
+    if (box) box.scrollTop = box.scrollHeight;
+  });
+}
+
+function renderSchedScheduled(force) {
+  if (!elements.schedScheduled) return;
+  const list = state.schedScheduled || [];
+  const sig = JSON.stringify(list);
+  if (!force && sig === state.schedSigScheduled) return;
+  state.schedSigScheduled = sig;
+  elements.schedScheduled.innerHTML = list.length
+    ? list
+        .map((item) =>
+          "<li><span>" + escapeHtml(schedScriptName(item.scriptId)) + "</span>" +
+          '<span class="hint">' + escapeHtml(item.scriptType || "") + "</span></li>",
+        )
+        .join("")
+    : '<li class="hint">没有托管项开着定时队列。</li>';
+}
+
+function schedPowerLabel(signal) {
+  const hit = (state.schedPowerOptions || []).find((item) => item.value === signal);
+  if (hit) return hit.label || hit.value || "不操作";
+  return signal || "不操作";
+}
+
+function renderSchedPower(force) {
+  if (!elements.schedPowerBox) return;
+  const options = state.schedPowerOptions || [];
+  const power = state.schedPower || {};
+  const current = power.signal || "NoAction";
+  const sig = JSON.stringify([options, power]);
+  if (!force && sig === state.schedSigPower) return;
+  state.schedSigPower = sig;
+  if (options.length) {
+    elements.schedPowerBox.innerHTML = options
+      .map((item) =>
+        '<option value="' + escapeHtml(item.value) + '"' + (item.value === current ? " selected" : "") + ">" +
+        escapeHtml(item.label || item.value) + "</option>",
+      )
+      .join("");
+  }
+  if (!elements.schedCountdown) return;
+  const countdown = power.countdown || {};
+  if (countdown && countdown.active) {
+    elements.schedCountdown.textContent =
+      "「" + schedPowerLabel(countdown.operation) + "」将在 " + countdown.remaining + " 秒后执行，点「取消倒计时」可以拦下来。";
+    elements.schedCountdown.classList.remove("is-hidden");
+    return;
+  }
+  elements.schedCountdown.textContent = current && current !== "NoAction"
+    ? "所有任务跑完后会执行「" + schedPowerLabel(current) + "」。"
+    : "所有任务跑完后什么都不做。";
+}
+
+function renderScheduler(force) {
+  renderSchedTargets();
+  renderSchedUsers();
+  renderSchedTasks(force === undefined ? true : force);
+  renderSchedScheduled(force === undefined ? true : force);
+  renderSchedPower(force === undefined ? true : force);
+}
+
+async function loadSchedScope(force) {
+  if (!state.schedScopeCache) state.schedScopeCache = {};
+  const key = schedTargetValue();
+  state.schedSelectedUsers = null;
+  const cached = force ? null : state.schedScopeCache[key];
+  if (cached) {
+    state.schedScopeLoading = false;
+    if (state.schedSource === "queue") state.schedScopeItems = cached.items || [];
+    else state.schedUsers = cached.users || [];
+    renderSchedTargets();
+    renderSchedUsers();
+    return;
+  }
+  state.schedScopeLoading = true;
+  if (state.schedSource === "queue") {
+    const queueId = state.schedQueueId || schedQueueOf();
+    state.schedQueueId = queueId;
+    state.schedScopeItems = [];
+    renderSchedUsers();
+    if (queueId) {
+      try {
+        const data = await callApi("scheduler/scope", { queueId: queueId });
+        state.schedScopeItems = data.items || [];
+        state.schedScopeCache["queue:" + queueId] = { items: state.schedScopeItems };
+      } catch (error) {
+        state.schedScopeItems = [];
+        setError(error.message);
+      }
+    }
+    state.schedScopeLoading = false;
+    renderSchedTargets();
+    renderSchedUsers();
+    return;
+  }
+  const scriptId = state.schedScriptId || schedScriptOf();
+  state.schedScriptId = scriptId;
+  state.schedUsers = [];
+  if (!scriptId) {
+    state.schedScopeLoading = false;
+    renderSchedUsers();
+    return;
+  }
+  renderSchedUsers();
+  try {
+    const data = await callApi("users", { scriptId: scriptId });
+    state.schedUsers = data.users || [];
+    state.schedScopeCache["script:" + scriptId] = { users: state.schedUsers };
+  } catch (error) {
+    state.schedUsers = [];
+    setError(error.message);
+  }
+  state.schedScopeLoading = false;
+  renderSchedTargets();
+  renderSchedUsers();
+}
+async function loadScheduler(options) {
+  const silent = Boolean(options && options.silent);
+  if (!schedScriptList().length) {
+    try {
+      await loadOverview();
+    } catch (error) {
+      if (!silent) setError(error.message);
+    }
+  }
+  try {
+    const data = await callApi("scheduler", {});
+    state.schedTasks = data.tasks || [];
+    state.schedScheduled = data.scheduled || [];
+    state.schedPower = data.power || {};
+    state.schedPowerOptions = data.powerOptions || [];
+    state.schedQueues = data.queues || [];
+    renderSchedTargets();
+    if (!schedScopeUsers().length) await loadSchedScope();
+    renderScheduler(true);
+  } catch (error) {
+    if (!silent) setError(error.message);
+  }
+}
+
+async function pollScheduler() {
+  try {
+    const data = await callApi("scheduler/running", {});
+    state.schedTasks = data.tasks || [];
+    state.schedScheduled = data.scheduled || [];
+    state.schedPower = data.power || {};
+    renderSchedTasks(false);
+    renderSchedScheduled(false);
+    renderSchedPower(false);
+  } catch (error) {
+    stopSchedPolling();
+  }
+}
+
+function startSchedPolling() {
+  stopSchedPolling();
+  state.schedTimer = setInterval(() => {
+    if (state.view !== "scheduler") {
+      stopSchedPolling();
+      return;
+    }
+    pollScheduler();
+  }, 3000);
+}
+
+function stopSchedPolling() {
+  if (state.schedTimer) {
+    clearInterval(state.schedTimer);
+    state.schedTimer = null;
+  }
+}
+
+async function schedStart() {
+  if (state.busy) return;
+  if (state.schedScopeLoading) {
+    showToast("还在读账号列表，稍等一下。", true);
+    return;
+  }
+  const mode = elements.schedMode ? elements.schedMode.value : "AutoProxy";
+  const picked = schedPickedIds();
+  const payload = { mode: mode };
+  if (state.schedSource === "queue") {
+    const queueId = state.schedQueueId || schedQueueOf();
+    if (!queueId) {
+      showToast("先选一个调度队列。", true);
+      return;
+    }
+    const rows = schedScopeRows();
+    if (!rows.length) {
+      showToast("这个队列里的任务项还没选托管项。", true);
+      return;
+    }
+    // 每个脚本都列进去：勾了谁就只跑谁，一个没勾的脚本写空数组＝这次整项跳过。
+    const queueUserIds = {};
+    let pickedTotal = 0;
+    rows.forEach((row) => {
+      const usable = (row.users || []).filter((user) => user.status !== false);
+      const hit = picked.filter((uid) => usable.some((user) => user.uid === uid));
+      queueUserIds[row.scriptId] = hit;
+      pickedTotal += hit.length;
+    });
+    if (!pickedTotal) {
+      showToast("至少勾一个账号。", true);
+      return;
+    }
+    payload.taskId = queueId;
+    payload.queueUserIds = queueUserIds;
+    const resume = elements.schedResume ? elements.schedResume.value : "";
+    if (resume) payload.resumeFromScriptId = resume;
+  } else {
+    const scriptId = schedScriptOf();
+    if (!scriptId) {
+      showToast("先选一个托管项。", true);
+      return;
+    }
+    const usable = schedUsableUsers();
+    const hit = picked.filter((uid) => usable.some((user) => user.uid === uid));
+    if (mode !== "Update" && !usable.length) {
+      showToast("这个托管项下没有可运行的账号。", true);
+      return;
+    }
+    if (mode !== "Update" && !hit.length) {
+      showToast("至少勾一个账号。", true);
+      return;
+    }
+    payload.scriptId = scriptId;
+    if (hit.length) payload.userIds = hit;
+  }
+  state.busy = true;
+  try {
+    await postApi("dispatch/start", payload);
+    showToast("任务已提交。");
+    await loadScheduler({ silent: true });
+  } catch (error) {
+    setError(error.message);
+  } finally {
+    state.busy = false;
+  }
+}
+
+async function schedStop(taskId) {
+  if (!taskId) return;
+  try {
+    await postApi("dispatch/stop", { taskId: taskId });
+    showToast("已发送停止。");
+    await loadScheduler({ silent: true });
+  } catch (error) {
+    setError(error.message);
+  }
+}
+
+async function schedPowerApply() {
+  const signal = elements.schedPowerBox ? elements.schedPowerBox.value : "";
+  if (!signal) return;
+  try {
+    await postApi("scheduler/power", { signal: signal });
+    state.schedPower = { signal: signal, countdown: (state.schedPower || {}).countdown || {} };
+    renderSchedPower(true);
+    showToast(signal === "NoAction" ? "已关掉电源操作。" : "记下了，任务跑完就执行。");
+  } catch (error) {
+    setError(error.message);
+  }
+}
+
+async function schedPowerCancel() {
+  try {
+    await postApi("scheduler/power/cancel", {});
+    showToast("倒计时已取消。");
+  } catch (error) {
+    showToast("现在没有正在倒计时的电源操作。", true);
+  }
+  await loadScheduler({ silent: true });
+}
+
+function onSchedTasksClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const stop = target.closest("[data-sched-stop]");
+  if (stop) {
+    schedStop(stop.getAttribute("data-sched-stop"));
+    return;
+  }
+  const logBtn = target.closest("[data-sched-log]");
+  if (!logBtn) return;
+  const taskId = logBtn.getAttribute("data-sched-log");
+  const box = elements.schedTasks.querySelector('[data-sched-logbox="' + taskId + '"]');
+  if (!box) return;
+  const opened = box.classList.toggle("is-hidden") === false;
+  const kept = (state.schedOpenLogs || []).filter((item) => item !== taskId);
+  if (opened) kept.push(taskId);
+  state.schedOpenLogs = kept;
+  logBtn.textContent = opened ? "收起日志" : "日志";
+  if (opened) box.scrollTop = box.scrollHeight;
+}
+
+function onSchedUserToggle(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const uid = target.getAttribute("data-sched-user");
+  if (!uid) return;
+  const picked = schedPickedIds().filter((item) => item !== uid);
+  if (target.checked) picked.push(uid);
+  state.schedSelectedUsers = picked;
+  renderSchedUsers();
+}
+
+function selectAllSchedUsers(all) {
+  state.schedSelectedUsers = all ? null : [];
+  renderSchedUsers();
 }
 
 // ---- 计划表 ----
@@ -2568,6 +3256,8 @@ async function openEditor(userId) {
     state.editing = { scriptId, userId, data: data.config || {}, plans: data.plans || [] };
     state.depotItems = null;
     state.cultivateOps = null;
+    state.taskFoldScope = "";
+    state.taskFoldOpen = [];
     state.customInfrastFiles = null;
     if (state.maafwScript !== scriptId) {
       state.maafwDefs = null;
@@ -2848,6 +3538,82 @@ const MAAEND_FIELD_VALUE_LABELS = {
 };
 
 // ok-script 线（OK-WW / OK-NTE）的枚举值与任务序号，值保持英文给 AUTO-MAS，显示走中文
+// MaaEnd 的「培养道具目标」（Task.SupplyPlanLimits）是一个 16 键的 JSON 字典：
+// 键是上游物品 ID、值是数量（字符串）。这里按终末地中文名逐项给数字框，不用人写 JSON。
+const MAAEND_SUPPLY_ITEMS = [
+  { key: "SupplyPlanLimit_T_CREDS", label: "折金票" },
+  { key: "SupplyPlanLimit_PROTOHEDRON", label: "协议棱柱组" },
+  { key: "SupplyPlanLimit_PROTOPRISM", label: "协议棱柱" },
+  { key: "SupplyPlanLimit_COGNITIVE_CARRIER_EXP", label: "认知载体经验" },
+  { key: "SupplyPlanLimit_COMBAT_RECORD_EXP", label: "作战记录经验" },
+  { key: "SupplyPlanLimit_PROTOSET", label: "协议圆盘组" },
+  { key: "SupplyPlanLimit_PROTODISK", label: "协议圆盘" },
+  { key: "SupplyPlanLimit_WEAPON_EXP", label: "武器经验" },
+  { key: "SupplyPlanLimit_HEAVY_CAST_DIE", label: "重型强固模具" },
+  { key: "SupplyPlanLimit_CAST_DIE", label: "强固模具" },
+  { key: "SupplyPlanLimit_WARP_PLASMA_COATED_SLIDE", label: "跃迁浆体涂片" },
+  { key: "SupplyPlanLimit_TRIPHASIC_NANOFLAKE", label: "三相纳米片" },
+  { key: "SupplyPlanLimit_QUADRANT_FITTING_FLUID", label: "象限拟合液" },
+  { key: "SupplyPlanLimit_TACHYON_SCREENING_LATTICE", label: "快子遴捡晶格" },
+  { key: "SupplyPlanLimit_D96_STEEL_SAMPLE_4", label: "D96 钢样品四" },
+  { key: "SupplyPlanLimit_METADIASTIMA_PHOTOEMISSION_TUBE", label: "超距辉映管" },
+];
+
+// 库存任务领取方式，值由 MaaEnd 声明，AUTO-MAS 只透传
+const MAAEND_PROTOCOL_CLAIM_OPTIONS = [
+  { value: "ObtainScaling1", label: "单倍领取" },
+  { value: "ObtainScaling2", label: "优先双倍领取" },
+];
+
+function supplyPlanMap() {
+  const raw = getConfigPath("Task.SupplyPlanLimits");
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw || "{}");
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return { map: parsed, isString: true };
+    } catch (error) {
+      return { map: {}, isString: true };
+    }
+    return { map: {}, isString: true };
+  }
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) return { map: raw, isString: false };
+  return { map: {}, isString: true };
+}
+
+function supplyRowHtml(key, label, value) {
+  return [
+    '<label class="supply-row"><span title="' + escapeHtml(label) + '">' + escapeHtml(shortLabel(label)) + "</span>",
+    '<input class="task-input" type="number" min="0" max="3000000000" step="1"',
+    ' data-conf-path="Task.SupplyPlanLimits" data-supply-key="' + escapeHtml(key) + '"',
+    ' value="' + escapeHtml(value) + '" placeholder="0" /></label>',
+  ].join("");
+}
+
+function supplyPlanHtml() {
+  const parsed = supplyPlanMap();
+  const map = parsed.map || {};
+  const known = {};
+  const rows = MAAEND_SUPPLY_ITEMS.map(function (item) {
+    known[item.key] = true;
+    const value = map[item.key];
+    return supplyRowHtml(item.key, item.label, value === undefined || value === null ? "" : String(value));
+  });
+  Object.keys(map).forEach(function (key) {
+    if (known[key]) return;
+    const value = map[key];
+    rows.push(supplyRowHtml(key, key.replace(/^SupplyPlanLimit_/, ""), value === undefined || value === null ? "" : String(value)));
+  });
+  const filled = Object.keys(map).filter(function (key) {
+    return String(map[key] === undefined || map[key] === null ? "" : map[key]).trim() !== "";
+  }).length;
+  return [
+    '<details class="task-collapse"><summary title="培养道具目标">',
+    '<span class="fold-title">展开编辑各材料目标</span>',
+    '<span class="fold-meta">已设 ' + filled + " / 共 " + rows.length + " 项</span></summary>",
+    '<div class="task-field task-field-wide"><p class="hint">经验类按折算经验填，其余按件数；填 0 表示不纳入本轮规划，单项不超过 3000000000。全部达标后结束任务。</p>',
+    '<div class="supply-grid">' + rows.join("") + "</div></div></details>",
+  ].join("");
+}
 const OKNTE_TASK_OPTIONS = [
   { value: "1", label: "启动游戏" },
   { value: "2", label: "日常任务" },
@@ -2976,6 +3742,12 @@ function maaendFieldOverride(full, node) {
       }),
       label: base.label || "每日只做一次的任务（做完当天跳过）",
     });
+  }
+  if (rel === "SupplyPlanLimits") {
+    return Object.assign({}, base, { kind: "json", label: "培养道具目标" });
+  }
+  if (rel === "ProtocolSpaceObtainModeClaim") {
+    return Object.assign({}, base, { kind: "enum", options: MAAEND_PROTOCOL_CLAIM_OPTIONS, label: "库存任务领取方式" });
   }
   const opt = state.maaendOptions;
   if (!opt) return null;
@@ -3278,6 +4050,43 @@ function foldSections(html, mode) {
     .replace(/<\/section>/g, "</details>");
 }
 
+
+// 任务页里点一下数字/加一条任务都会整块重渲染，重渲染后要把用户已经展开的折叠块还原，
+// 不然每改一次就自动收起来。切换账号（或刚打开抽屉）时不还原，回到默认收起。
+function taskFoldScopeKey() {
+  const editing = state.editing || {};
+  return String(editing.scriptId || "") + "/" + String(editing.userId || "");
+}
+
+function foldKeyOf(node) {
+  const summary = node.querySelector("summary");
+  if (!summary) return "";
+  const title = summary.querySelector(".fold-title");
+  if (title) return String(title.textContent || "").trim();
+  const clone = summary.cloneNode(true);
+  const meta = clone.querySelector(".fold-meta");
+  if (meta) meta.remove();
+  return String(clone.textContent || "").trim();
+}
+
+function collectOpenFolds() {
+  if (!elements.taskForm) return [];
+  const out = [];
+  elements.taskForm.querySelectorAll("details[open]").forEach(function (node) {
+    const key = foldKeyOf(node);
+    if (key && out.indexOf(key) < 0) out.push(key);
+  });
+  return out;
+}
+
+function restoreOpenFolds(keys) {
+  if (!elements.taskForm || !keys || !keys.length) return;
+  const wanted = new Set(keys);
+  elements.taskForm.querySelectorAll("details").forEach(function (node) {
+    const key = foldKeyOf(node);
+    if (key && wanted.has(key)) node.open = true;
+  });
+}
 // 有些脚本的任务参数不在 Stage / Task 段里，而是藏在 Info 里（BAAH 就是这种）。
 // 这里按类型点名要哪几个键，避免把账号名、启用状态这些基础字段也搬进任务页。
 const TASK_EXTRA_FIELDS = {
@@ -3629,6 +4438,17 @@ function isSchemaField(target) {
   return Boolean(target.closest && target.closest("[data-multi]"));
 }
 function commitConfigValue(target) {
+  const supplyKey = target.getAttribute && target.getAttribute("data-supply-key");
+  if (supplyKey) {
+    const pathStr = target.getAttribute("data-conf-path") || "Task.SupplyPlanLimits";
+    const parsed = supplyPlanMap();
+    const map = Object.assign({}, parsed.map);
+    const raw = String(target.value || "").trim();
+    if (raw === "") delete map[supplyKey];
+    else map[supplyKey] = raw;
+    setConfigPath(pathStr, parsed.isString ? JSON.stringify(map) : map);
+    return true;
+  }
   const multi = target.closest ? target.closest("[data-multi]") : null;
   if (multi) {
     const picked = Array.prototype.slice
@@ -4483,6 +5303,7 @@ function zzzAppListHtml() {
 function configCustomHtml(full) {
   const info = currentScriptInfo();
   const type = String((info && info.type) || "");
+  if (type === "MaaEndConfig" && full === "Task.SupplyPlanLimits") return supplyPlanHtml();
   if (type === "BetterGIConfig") {
     if (full === "OneDragon.Groups") return '<div class="ord-block">' + bettergiGroupsHtml() + "</div>";
     if (full === "OneDragon.CustomGroups") return '<div class="ord-block">' + bettergiCustomGroupsHtml() + "</div>";
@@ -4690,6 +5511,16 @@ function applyTaskTabState() {
 }
 
 function renderTaskForm() {
+  const scope = taskFoldScopeKey();
+  const sameScope = state.taskFoldScope === scope;
+  const opened = sameScope ? collectOpenFolds() : [];
+  if (!sameScope) state.taskFoldScope = scope;
+  state.taskFoldOpen = opened;
+  renderTaskFormInner();
+  if (opened.length) restoreOpenFolds(opened);
+}
+
+function renderTaskFormInner() {
   loadMaaendOptions();
   loadMaafwDefinition();
   loadWhimboxCatalog();
@@ -4917,6 +5748,8 @@ async function refreshEditorData() {
     if (data.plans) editing.plans = data.plans;
     state.depotItems = null;
     state.cultivateOps = null;
+    state.taskFoldScope = "";
+    state.taskFoldOpen = [];
     syncFormFromData();
     state.editSnapshot = elements.json.value;
   } catch (error) {
@@ -5980,6 +6813,22 @@ function bindEvents() {
     }
     handleTaskListClick(node);
   });
+  if (elements.schedStart) elements.schedStart.addEventListener("click", schedStart);
+  if (elements.schedRefresh) elements.schedRefresh.addEventListener("click", () => loadScheduler());
+  if (elements.schedTarget) {
+    elements.schedTarget.addEventListener("change", async () => {
+      setSchedTarget(elements.schedTarget.value);
+      state.schedSelectedUsers = null;
+      if (!state.schedScopeCache) state.schedScopeCache = {};
+      await loadSchedScope();
+    });
+  }
+  if (elements.schedUsersAll) elements.schedUsersAll.addEventListener("click", () => selectAllSchedUsers(true));
+  if (elements.schedUsersNone) elements.schedUsersNone.addEventListener("click", () => selectAllSchedUsers(false));
+  if (elements.schedUsers) elements.schedUsers.addEventListener("change", onSchedUserToggle);
+  if (elements.schedTasks) elements.schedTasks.addEventListener("click", onSchedTasksClick);
+  if (elements.schedPowerApply) elements.schedPowerApply.addEventListener("click", schedPowerApply);
+  if (elements.schedPowerCancel) elements.schedPowerCancel.addEventListener("click", schedPowerCancel);
   elements.taskForm.addEventListener("input", (event) => {
     const target = event.target;
     if (target instanceof HTMLElement) validateTaskJson(target);

@@ -57,6 +57,11 @@
         "description": "托管项管理（新建/删除/排序）",
         "default": true
       },
+      "scheduler": {
+        "type": "bool",
+        "description": "调度中心（运行范围 / 实时状态 / 电源操作）",
+        "default": true
+      },
       "emulator": {
         "type": "bool",
         "description": "模拟器",

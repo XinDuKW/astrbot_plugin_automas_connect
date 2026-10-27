@@ -371,16 +371,50 @@ class MasClient:
         task_id: str,
         mode: str = "AutoProxy",
         user_ids: list[str] | None = None,
+        queue_user_ids: dict[str, list[str]] | None = None,
+        resume_from_script_id: str = "",
     ) -> str:
-        """启动一个任务。mode=AutoProxy 跑脚本自动代理，taskId 传脚本 ID。"""
+        """启动一个任务。
+
+        taskId 传脚本 ID（AutoProxy / ScriptConfig / Update）或队列 ID（AutoProxy / CycleRun）。
+        queueUserIds 只对队列任务生效：按脚本 ID 指定本次要跑的账号，没列出的脚本不限，
+        空列表表示该脚本本次整项跳过。resumeFromScriptId 让队列从某一项开始跑，
+        之前的项会被标记为跳过。
+        """
         payload: dict[str, Any] = {"mode": mode, "taskId": task_id}
         if user_ids:
             payload["userIds"] = user_ids
+        if queue_user_ids:
+            payload["queueUserIds"] = {
+                str(key): [str(item) for item in value]
+                for key, value in queue_user_ids.items()
+                if isinstance(value, list)
+            }
+        if resume_from_script_id:
+            payload["resumeFromScriptId"] = resume_from_script_id
         body = await self._request("POST", "/api/dispatch/start", payload)
         return str(body.get("taskId") or "")
 
     async def stop_task(self, task_id: str) -> None:
         await self._request("POST", "/api/dispatch/stop", {"taskId": task_id})
+
+    async def power_signal(self) -> str:
+        """当前生效的「任务完成后电源操作」，空串表示没设置。"""
+        body = await self._request("POST", "/api/dispatch/get/power", {})
+        return str(body.get("signal") or "")
+
+    async def set_power(self, signal: str) -> None:
+        """写入电源操作；AUTO-MAS 会在任务全部跑完后按它执行并开始倒计时。"""
+        await self._request("POST", "/api/dispatch/set/power", {"signal": signal})
+
+    async def cancel_power(self) -> None:
+        """取消已经挂起的电源倒计时。"""
+        await self._request("POST", "/api/dispatch/cancel/power", {})
+
+    async def power_countdown(self) -> dict[str, Any]:
+        """电源操作倒计时快照 {active, operation, remaining}。"""
+        body = await self._request("GET", "/api/dispatch/power/countdown-snapshot")
+        return body if isinstance(body, dict) else {}
 
     async def runtime_snapshot(self) -> dict[str, Any]:
         return await self._request("GET", "/api/dispatch/runtime-snapshot")
@@ -1149,13 +1183,90 @@ def parse_runtime_snapshot(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
             {
                 "taskId": task_id,
                 "mode": str(item.get("mode") or ""),
+                "queueId": str(item.get("queueId") or ""),
                 "scriptId": str(item.get("scriptId") or ""),
                 "userId": str(item.get("userId") or ""),
                 "isCycle": bool(item.get("isCycle")),
                 "stopping": bool(item.get("stopping")),
+                "scripts": _parse_task_scripts(item.get("scripts")),
+                "taskInfo": _parse_task_info(item.get("task_info")),
+                "cycleNext": _parse_cycle_next(item.get("cycleNextList")),
+                "log": str(item.get("log") or ""),
+                "logSeq": int(item.get("logSeq") or 0),
             }
         )
     return result
+
+
+def _parse_task_scripts(raw: Any) -> list[dict[str, str]]:
+    """快照里的 scripts 只是 [{scriptId, scriptType}]，任务卡片用它标托管类型。"""
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        script_id = str(item.get("scriptId") or "")
+        if not script_id:
+            continue
+        out.append(
+            {
+                "scriptId": script_id,
+                "scriptType": str(item.get("scriptType") or ""),
+            }
+        )
+    return out
+
+
+def _parse_task_info(raw: Any) -> list[dict[str, Any]]:
+    """托管项 → 账号 → 运行状态三级结构，运行面板直接按它画。"""
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        users: list[dict[str, str]] = []
+        for user in item.get("userList") or []:
+            if not isinstance(user, dict):
+                continue
+            users.append(
+                {
+                    "userId": str(user.get("user_id") or ""),
+                    "name": str(user.get("name") or ""),
+                    "status": str(user.get("status") or ""),
+                }
+            )
+        out.append(
+            {
+                "scriptId": str(item.get("script_id") or ""),
+                "name": str(item.get("name") or ""),
+                "status": str(item.get("status") or ""),
+                "users": users,
+            }
+        )
+    return out
+
+
+def _parse_cycle_next(raw: Any) -> list[dict[str, Any]]:
+    """循环运行任务里的待跑 / 运行中 / 已到点清单。"""
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        out.append(
+            {
+                "queueItemId": str(item.get("queueItemId") or ""),
+                "scriptId": str(item.get("scriptId") or ""),
+                "scriptName": str(item.get("scriptName") or ""),
+                "nextRunAt": str(item.get("nextRunAt") or ""),
+                "isDue": bool(item.get("isDue")),
+                "isRunning": bool(item.get("isRunning")),
+            }
+        )
+    return out
 
 
 def _deepcopy_json(value: Any) -> Any:

@@ -42,8 +42,11 @@
 
       <p class="error-notice is-hidden" id="error-notice"></p>
 
+      <div id="running-panel"></div>
+
       <nav class="view-tabs" id="view-tabs" role="tablist" aria-label="功能分区">
         <button class="view-tab is-active" data-view="scripts" type="button" role="tab">托管</button>
+        <button class="view-tab" data-view="scheduler" type="button" role="tab">调度</button>
         <button class="view-tab" data-view="plans" type="button" role="tab">计划表</button>
         <button class="view-tab" data-view="queue" type="button" role="tab">队列</button>
         <button class="view-tab" data-view="emulator" type="button" role="tab">模拟器</button>
@@ -76,8 +79,64 @@
               <button class="mini-button is-hidden" id="user-create" type="button"><i class="mdi mdi-account-plus"></i> 新建账号</button>
             </span>
           </div>
-          <div id="running-panel"></div>
           <ul class="user-list" id="user-list"></ul>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-scheduler" data-view="scheduler">
+        <aside class="script-pane">
+          <div class="pane-head"><span>启动任务</span></div>
+          <div class="sched-form">
+            <label class="queue-field">
+              <span class="queue-label">运行来源</span>
+              <select id="sched-target"></select>
+              <p class="hint" id="sched-target-hint"></p>
+            </label>
+            <label class="queue-field is-hidden" id="sched-resume-field">
+              <span class="queue-label">从指定托管继续</span>
+              <select id="sched-resume"></select>
+            </label>
+            <label class="queue-field">
+              <span class="queue-label">运行模式</span>
+              <select id="sched-mode">
+                <option value="AutoProxy">自动代理（按托管项配置跑）</option>
+                <option value="CycleRun">循环运行（跑完接着下一轮）</option>
+                <option value="ScriptConfig">按脚本自己的配置跑</option>
+                <option value="Update">仅更新脚本</option>
+              </select>
+            </label>
+            <div class="queue-field">
+              <span class="queue-label">本次运行范围 <span class="fold-meta" id="sched-scope-count"></span></span>
+              <div class="check-line" id="sched-users"></div>
+              <div class="sched-inline">
+                <button class="mini-button" id="sched-users-all" type="button">全选</button>
+                <button class="mini-button" id="sched-users-none" type="button">取消全选</button>
+              </div>
+            </div>
+            <button class="primary-button" id="sched-start" type="button"><i class="mdi mdi-play"></i> 开始执行</button>
+          </div>
+
+          <div class="pane-head"><span>任务完成后电源操作</span></div>
+          <div class="sched-form">
+            <select id="sched-power"></select>
+            <div class="sched-inline">
+              <button class="mini-button" id="sched-power-apply" type="button">应用</button>
+              <button class="mini-button" id="sched-power-cancel" type="button">取消倒计时</button>
+            </div>
+            <p class="hint" id="sched-countdown"></p>
+          </div>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions">
+            <span id="sched-title">运行中</span>
+            <span class="head-actions">
+              <button class="mini-button" id="sched-refresh" type="button"><i class="mdi mdi-refresh"></i> 刷新</button>
+            </span>
+          </div>
+          <div class="sched-tasks" id="sched-tasks"></div>
+          <div class="pane-head"><span>已启用定时</span></div>
+          <ul class="sched-scheduled" id="sched-scheduled"></ul>
         </main>
       </div>
 
