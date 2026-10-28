@@ -49,6 +49,8 @@
         <button class="view-tab" data-view="scheduler" type="button" role="tab">调度</button>
         <button class="view-tab" data-view="plans" type="button" role="tab">计划表</button>
         <button class="view-tab" data-view="queue" type="button" role="tab">队列</button>
+        <button class="view-tab" data-view="timed" type="button" role="tab">定时</button>
+        <button class="view-tab" data-view="binding" type="button" role="tab">绑定</button>
         <button class="view-tab" data-view="emulator" type="button" role="tab">模拟器</button>
         <button class="view-tab" data-view="history" type="button" role="tab">历史</button>
         <button class="view-tab" data-view="settings" type="button" role="tab">设置</button>
@@ -180,6 +182,42 @@
             </span>
           </div>
           <div class="queue-editor" id="queue-editor"></div>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-timed" data-view="timed">
+        <aside class="script-pane">
+          <div class="pane-head pane-head-actions">
+            <span>定时队列</span>
+            <button class="mini-button" id="timed-refresh" type="button"><i class="mdi mdi-refresh"></i> 刷新</button>
+          </div>
+          <p class="hint timed-hint">接管之后 AUTO-MAS 自己的定时会关掉，改由调度台到点排队：前面那批没跑完就等着，跑完再顺着跑；开跑前会播报上一批的实际用时。</p>
+          <ul class="timed-list" id="timed-list"></ul>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head"><span id="timed-title">选一个队列</span></div>
+          <div class="timed-editor" id="timed-editor"></div>
+        </main>
+      </div>
+
+      <div class="view workspace is-hidden" id="view-binding" data-view="binding">
+        <aside class="script-pane">
+          <div class="pane-head pane-head-actions">
+            <span>绑定的用户</span>
+            <button class="mini-button" id="binding-create" type="button"><i class="mdi mdi-account-plus"></i> 新增</button>
+          </div>
+          <ul class="binding-list" id="binding-list"></ul>
+        </aside>
+
+        <main class="detail-pane">
+          <div class="pane-head pane-head-actions">
+            <span id="binding-title">选一个用户</span>
+            <span class="head-actions">
+              <button class="mini-button is-danger is-hidden" id="binding-delete" type="button">清空绑定</button>
+            </span>
+          </div>
+          <div class="binding-editor" id="binding-editor"></div>
         </main>
       </div>
 

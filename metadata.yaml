@@ -8,7 +8,7 @@ desc: >-
   日常操作不用切回桌面端。
 
   依赖 AUTO-MAS 的本地 REST API（默认 http://127.0.0.1:36163）。
-version: 1.1.0
+version: 1.2.0
 author: XinDuKW
 repo: https://github.com/XinDuKW/astrbot_plugin_automas_connect
 tags:

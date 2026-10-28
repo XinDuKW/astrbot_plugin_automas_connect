@@ -167,6 +167,25 @@ class MasError(RuntimeError):
     """AUTO-MAS 连不上、返回失败或返回了非 JSON。"""
 
 
+def _combo_items(raw: Any) -> list[dict[str, str]]:
+    """把 AUTO-MAS 的 ComboBoxItem 列表统一成 [{"label", "value"}]，值一律转字符串。"""
+    result: list[dict[str, str]] = []
+    for item in raw or []:
+        if not isinstance(item, dict):
+            continue
+        value = item.get("value")
+        label = item.get("label")
+        if value is None and label is None:
+            continue
+        result.append(
+            {
+                "label": str(label if label is not None else value),
+                "value": str(value if value is not None else ""),
+            }
+        )
+    return result
+
+
 def _describe_http_error(response: httpx.Response) -> str:
     """把 FastAPI 的 422 detail 摘成人话，避免只看到一个光秃秃的状态码。"""
     try:
@@ -487,6 +506,15 @@ class MasClient:
         body = await self._request("POST", "/api/emulator/status", {})
         data = body.get("data")
         return data if isinstance(data, dict) else {}
+
+    async def screenshot_adb(self, adb_path: str, serial: str) -> str:
+        """通过 ADB 截一张图，返回纯 base64（PNG）；失败抛 MasError。"""
+        body = await self._request(
+            "POST",
+            "/api/ocr/screenshot/adb",
+            {"adb_path": adb_path, "serial": serial, "use_screencap": True},
+        )
+        return str(body.get("image_base64") or "")
 
     async def add_emulator(self) -> dict[str, Any]:
         body = await self._request("POST", "/api/emulator/add", {})
@@ -842,6 +870,56 @@ class MasClient:
             )
         return result
 
+    async def get_bettergi_js_scripts(self, script_id: str) -> list[dict[str, str]]:
+        """BetterGI 一条龙可挂的自定义 JS 脚本（value 是脚本目录名）。"""
+        body = await self._request(
+            "GET", "/api/scripts/bettergi/js-scripts", params={"scriptId": script_id}
+        )
+        return _combo_items(body.get("data"))
+
+    async def get_bettergi_key_mouse_scripts(self, script_id: str) -> list[dict[str, str]]:
+        """BetterGI 一条龙可挂的键鼠录制脚本（value 是脚本名）。"""
+        body = await self._request(
+            "GET", "/api/scripts/bettergi/key-mouse-scripts", params={"scriptId": script_id}
+        )
+        return _combo_items(body.get("data"))
+
+    async def get_bettergi_script_groups(
+        self, script_id: str, user_id: str = ""
+    ) -> list[dict[str, str]]:
+        """BetterGI 配置组候选（User/ScriptGroup/*.json，带 userId 时并上 per-user 副本）。"""
+        params: dict[str, Any] = {"scriptId": script_id}
+        if user_id:
+            params["userId"] = user_id
+        body = await self._request(
+            "GET", "/api/scripts/bettergi/script-groups", params=params
+        )
+        return _combo_items(body.get("data"))
+
+    async def get_bettergi_pathing(self, script_id: str) -> list[dict[str, str]]:
+        """BetterGI 地图追踪（AutoPathing）文件扁平成候选列表。"""
+        body = await self._request(
+            "GET", "/api/scripts/bettergi/auto-pathing-tree", params={"scriptId": script_id}
+        )
+        flat: list[dict[str, str]] = []
+
+        def walk(node: Any, prefix: list[str]) -> None:
+            if not isinstance(node, dict):
+                return
+            name = str(node.get("name") or "")
+            here = prefix + ([name] if prefix else [])
+            for file_name in node.get("files") or []:
+                text = str(file_name or "").strip()
+                if not text:
+                    continue
+                flat.append({"value": text, "label": text})
+            for child in node.get("dirs") or []:
+                walk(child, here)
+
+        for root_node in body.get("dirs") or []:
+            walk(root_node, [])
+        return flat
+
     async def get_zzzod_catalog(self, script_id: str) -> list[dict[str, Any]]:
         """绝区零一条龙的任务目录（app_id + 中文名 + 是否可配参数 + 排序权重）。"""
         body = await self._request(
@@ -871,6 +949,70 @@ class MasClient:
             )
         result.sort(key=lambda entry: entry["priority"])
         return result
+
+    async def get_zzzod_teams(
+        self, script_id: str, user_id: str, instance_idx: int | None = None
+    ) -> dict[str, Any]:
+        """绝区零一条龙的预备编队（固定 20 个：名称 + 绑定的配队方案 + 成员）。
+
+        读的是这个账号绑定槽里的 team.yml；直控传 instanceIdx 读原生实例。
+        """
+        params: dict[str, Any] = {"scriptId": script_id, "userId": user_id}
+        if instance_idx is not None:
+            params["instanceIdx"] = str(instance_idx)
+        body = await self._request("GET", "/api/scripts/zzzod/teams", params=params)
+        teams: list[dict[str, Any]] = []
+        for item in body.get("teams") or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                idx = int(item.get("idx") or 0)
+            except (TypeError, ValueError):
+                idx = 0
+            teams.append(
+                {
+                    "idx": idx,
+                    "name": str(item.get("name") or f"编队{idx + 1}"),
+                    "autoBattle": str(item.get("autoBattle") or ""),
+                    "agents": [str(a) for a in (item.get("agents") or [])],
+                }
+            )
+        teams.sort(key=lambda entry: entry["idx"])
+        return {
+            "teams": teams,
+            "autoBattle": _combo_items(body.get("autoBattle")),
+            "agents": _combo_items(body.get("agentOptions")),
+        }
+
+    async def save_zzzod_teams(
+        self,
+        script_id: str,
+        user_id: str,
+        teams: list[dict[str, Any]],
+        instance_idx: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """整表保存预备编队（只改名称与配队方案，成员交给一条龙自己识别）。"""
+        payload: dict[str, Any] = {
+            "scriptId": script_id,
+            "userId": user_id,
+            "teams": teams,
+        }
+        if instance_idx is not None:
+            payload["instanceIdx"] = instance_idx
+        body = await self._request("POST", "/api/scripts/zzzod/teams/save", payload)
+        saved: list[dict[str, Any]] = []
+        for item in body.get("teams") or []:
+            if not isinstance(item, dict):
+                continue
+            saved.append(
+                {
+                    "idx": int(item.get("idx") or 0),
+                    "name": str(item.get("name") or ""),
+                    "autoBattle": str(item.get("autoBattle") or ""),
+                    "agents": [str(a) for a in (item.get("agents") or [])],
+                }
+            )
+        return saved
 
     async def get_depot_items(self, script_id: str) -> list[dict[str, str]]:
         """库存保持可选材料（DropId → 名称）。"""

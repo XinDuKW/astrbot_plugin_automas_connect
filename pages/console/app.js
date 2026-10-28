@@ -222,6 +222,15 @@ const elements = {
   histTitle: document.getElementById("hist-title"),
   histBody: document.getElementById("hist-body"),
   scriptCreate: document.getElementById("script-create"),
+  bindingList: document.getElementById("binding-list"),
+  bindingTitle: document.getElementById("binding-title"),
+  bindingEditor: document.getElementById("binding-editor"),
+  bindingCreate: document.getElementById("binding-create"),
+  bindingDelete: document.getElementById("binding-delete"),
+  timedList: document.getElementById("timed-list"),
+  timedTitle: document.getElementById("timed-title"),
+  timedEditor: document.getElementById("timed-editor"),
+  timedRefresh: document.getElementById("timed-refresh"),
   scriptConfig: document.getElementById("script-config"),
   scriptStart: document.getElementById("script-start"),
   startMode: document.getElementById("start-mode"),
@@ -272,6 +281,14 @@ const state = {
   selectedQueue: null,
   queueDetail: null,
   histDays: [],
+  bindings: [],
+  selectedBinding: "",
+  bindingDraft: null,
+  bindingScript: "",
+  bindingUsers: {},
+  timed: null,
+  selectedTimed: "",
+  subscribers: null,
   selectedHistDay: null,
   selectedScript: null,
   users: [],
@@ -287,8 +304,15 @@ const state = {
   maaendOptions: null,
   maaendTasks: null,
   maaendScript: "",
+  scriptFoldOpen: null,
+  maaendNative: null,
+  maaendNativeUser: null,
+  supplySearch: "",
+  supplyCat: "all",
+  supplyOnlySet: false,
   maafwDefs: null,
   maafwScript: "",
+  maafwOpenTasks: [],
   whimboxCatalog: null,
   whimboxScript: "",
   oknteFiles: null,
@@ -299,8 +323,17 @@ const state = {
   bgiConfigs: [],
   bgiCustomGroups: [],
   bgiScript: "",
+  bgiOrder: null,
+  bgiOrderStamp: "",
+  bgiOrderDirty: false,
+  bgiCandidates: null,
+  bgiOrderError: "",
   zzzCatalog: [],
   zzzScript: "",
+  zzzTeams: null,
+  zzzAutoBattle: [],
+  zzzAgents: [],
+  zzzTeamKey: "",
   emulators: [],
   selectedEmulator: null,
   emulatorData: null,
@@ -467,6 +500,8 @@ const VIEW_FEATURE = {
   history: "history",
   settings: "settings",
   scheduler: "scheduler",
+  binding: "binding",
+  timed: "timed",
 };
 
 function applyFeatures() {
@@ -547,6 +582,12 @@ function switchView(name) {
     if (!state.emulators.length) loadEmulators();
     else renderEmulatorList();
   }
+  if (name === "binding" && featureOn("binding")) {
+    loadBindings();
+  }
+  if (name === "timed" && featureOn("timed")) {
+    loadTimed();
+  }
   if (name === "scheduler" && featureOn("scheduler")) {
     loadScheduler();
     startSchedPolling();
@@ -561,6 +602,348 @@ function switchView(name) {
 }
 
 
+// ---- 定时队列 ----
+
+function timedData() {
+  return state.timed || { queues: [], runs: [], takeover: [] };
+}
+
+async function loadTimed() {
+  try {
+    state.timed = await callApi("timed", {});
+  } catch (error) {
+    setError(error);
+    return;
+  }
+  const rows = timedData().queues || [];
+  if (!state.selectedTimed && rows.length) state.selectedTimed = rows[0].queueId;
+  renderTimedList();
+  renderTimedEditor();
+}
+
+function timedQueue(queueId) {
+  const rows = timedData().queues || [];
+  return rows.find(function (row) { return row.queueId === queueId; }) || null;
+}
+
+function renderTimedList() {
+  const host = elements.timedList;
+  if (!host) return;
+  const rows = timedData().queues || [];
+  if (!rows.length) {
+    host.innerHTML = '<li class="empty">AUTO-MAS 里还没有调度队列。</li>';
+    return;
+  }
+  host.innerHTML = rows.map(function (row) {
+    const active = row.queueId === state.selectedTimed ? " is-active" : "";
+    const slots = row.slots || [];
+    let flag = "没开定时";
+    if (row.takeover) flag = "接管中";
+    else if (row.timeEnabled) flag = "AUTO-MAS 自己定时";
+    return '<li class="timed-item' + active + '" data-timed="' + escapeHtml(row.queueId) + '">' +
+      '<div class="timed-item-main">' +
+      '<span class="timed-name">' + escapeHtml(row.name) + '</span>' +
+      '<span class="timed-meta">' + escapeHtml(flag) + ' · ' + slots.length + ' 个定时</span>' +
+      '</div></li>';
+  }).join("");
+  host.querySelectorAll("[data-timed]").forEach(function (node) {
+    node.addEventListener("click", function () { openTimed(node.dataset.timed); });
+  });
+}
+
+function openTimed(queueId) {
+  state.selectedTimed = queueId;
+  renderTimedList();
+  renderTimedEditor();
+}
+
+function timedSlotRows(queue) {
+  const slots = queue.slots || [];
+  if (!slots.length) {
+    return '<p class="empty">这个队列还没有定时项，去「队列」页给它加一个。</p>';
+  }
+  return '<ul class="timed-slots">' + slots.map(function (slot) {
+    const days = (slot.days || []).join("、");
+    return '<li class="timed-slot">' +
+      '<span class="timed-slot-time">' + escapeHtml(slot.time || "--:--") + '</span>' +
+      '<span class="timed-slot-days">' + escapeHtml(days || "每天") + '</span>' +
+      '<span class="timed-slot-state' + (slot.enabled ? "" : " is-off") + '">' + (slot.enabled ? "启用" : "停用") + '</span>' +
+      '</li>';
+  }).join("") + '</ul>';
+}
+
+function timedClock(value) {
+  const text = String(value || "");
+  return text.length >= 16 ? text.slice(11, 16) : "--:--";
+}
+
+function timedRunRow(run) {
+  const status = String(run.status || "");
+  let cls = "";
+  let text = run.detail || status || "结束";
+  if (status === "success") { cls = " is-done"; text = "完成"; }
+  else if (status === "error") { cls = " is-error"; text = text || "失败"; }
+  const planned = String(run.planned || "").replace("T", " ").slice(0, 16);
+  return '<li class="timed-run">' +
+    '<span class="timed-run-day">' + escapeHtml(planned || "—") + '</span>' +
+    '<span class="timed-run-span">' + escapeHtml(timedClock(run.started)) + ' → ' + escapeHtml(timedClock(run.finished)) + '</span>' +
+    '<span class="timed-run-name">' + escapeHtml(run.queueName || run.queueId || "") + '</span>' +
+    '<span class="timed-run-state' + cls + '">' + escapeHtml(String(text)) + '</span>' +
+    '</li>';
+}
+
+function renderTimedEditor() {
+  const host = elements.timedEditor;
+  if (!host) return;
+  const queue = timedQueue(state.selectedTimed);
+  if (!queue) {
+    if (elements.timedTitle) elements.timedTitle.textContent = "选一个队列";
+    host.innerHTML = '<p class="empty">左边选一个队列。</p>';
+    return;
+  }
+  if (elements.timedTitle) elements.timedTitle.textContent = queue.name;
+  let intro = "这个队列的定时没开。";
+  if (queue.takeover) {
+    intro = "现在由调度台接管：AUTO-MAS 自己的定时已经关掉，到点先进调度台的队列，前面那批跑完才轮到它。";
+  } else if (queue.timeEnabled) {
+    intro = "现在还是 AUTO-MAS 自己在定时：到点会独立起一个任务，正在跑的脚本可能被跳过。想排队就点接管。";
+  }
+  const runs = timedData().runs || [];
+  const mine = runs.filter(function (run) { return run.queueId === queue.queueId; });
+  const parts = [];
+  parts.push('<div class="timed-block"><div class="queue-block-head"><span>定时代管</span></div>');
+  parts.push('<p class="hint">' + escapeHtml(intro) + '</p>');
+  parts.push('<button class="' + (queue.takeover ? "mini-button is-danger" : "primary-button") + '" id="timed-toggle" data-timed-toggle="' + escapeHtml(queue.queueId) + '" data-next="' + (queue.takeover ? "0" : "1") + '" type="button">' + (queue.takeover ? "取消接管" : "接管定时") + '</button>');
+  parts.push('</div>');
+  parts.push('<div class="timed-block"><div class="queue-block-head"><span>定时项</span></div>' + timedSlotRows(queue) + '</div>');
+  parts.push('<div class="timed-block"><div class="queue-block-head"><span>这个队列最近执行</span></div>' +
+    (mine.length ? '<ul class="timed-runs">' + mine.map(timedRunRow).join("") + '</ul>' : '<p class="empty">还没记录过执行。</p>') + '</div>');
+  if (queue.cycle) {
+    parts.push('<p class="hint">这个队列是循环模式，循环队列由队列项自己的周期驱动，这里只管普通定时。</p>');
+  }
+  host.innerHTML = parts.join("");
+  const toggle = host.querySelector("[data-timed-toggle]");
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      toggleTimed(toggle.dataset.timedToggle, toggle.dataset.next === "1");
+    });
+  }
+}
+
+async function toggleTimed(queueId, on) {
+  try {
+    await postApi("timed/takeover", { queueId: queueId, on: on });
+  } catch (error) {
+    setError(error);
+    return;
+  }
+  showToast(on ? "定时接管已打开。" : "已经交还给 AUTO-MAS。");
+  await loadTimed();
+}
+
+
+// ---- 多人绑定 ----
+
+function bindingOf(qq) {
+  return (state.bindings || []).find(function (row) { return row.qq === qq; }) || null;
+}
+
+async function loadBindings() {
+  try {
+    const data = await callApi("bindings", {});
+    state.bindings = data.bindings || [];
+  } catch (error) {
+    setError(error);
+    return;
+  }
+  renderBindingList();
+  if (state.selectedBinding || state.bindingDraft) renderBindingEditor();
+}
+
+function renderBindingList() {
+  if (!elements.bindingList) return;
+  const rows = state.bindings || [];
+  if (!rows.length) {
+    elements.bindingList.innerHTML = '<li class="empty">还没有人绑定账号。点右上角「新增」把 QQ 和账号对上。</li>';
+    return;
+  }
+  elements.bindingList.innerHTML = rows
+    .map(function (row) {
+      const active = row.qq === state.selectedBinding && !state.bindingDraft;
+      const count = (row.bindings || []).length;
+      return (
+        '<li class="binding-item' + (active ? " is-active" : "") + '" data-qq="' + escapeHtml(row.qq) + '">' +
+        '<div class="binding-main">' +
+        '<span class="binding-name">' + escapeHtml(row.display || row.qq) + "</span>" +
+        '<span class="binding-meta">' + escapeHtml(row.qq) + " · " + count + " 个账号</span>" +
+        "</div>" +
+        "</li>"
+      );
+    })
+    .join("");
+  elements.bindingList.querySelectorAll("[data-qq]").forEach(function (node) {
+    node.addEventListener("click", function () { openBinding(node.dataset.qq); });
+  });
+}
+
+function openBinding(qq) {
+  state.selectedBinding = qq;
+  state.bindingDraft = null;
+  renderBindingList();
+  renderBindingEditor();
+}
+
+function startBindingDraft() {
+  state.selectedBinding = "";
+  state.bindingDraft = { qq: "", display: "" };
+  renderBindingList();
+  renderBindingEditor();
+}
+
+function bindingScriptOptions(current) {
+  const scripts = (state.overview && state.overview.scripts) || [];
+  const options = ['<option value="">选一个托管项</option>'];
+  scripts.forEach(function (item) {
+    const selected = item.uid === current ? " selected" : "";
+    options.push('<option value="' + escapeHtml(item.uid) + '"' + selected + ">" + escapeHtml(item.name + " · " + item.typeLabel) + "</option>");
+  });
+  return options.join("");
+}
+
+function bindingUserOptions(scriptId, current) {
+  const users = (state.bindingUsers || {})[scriptId] || [];
+  if (!users.length) return '<option value="">先选托管项</option>';
+  return ['<option value="">选一个账号</option>']
+    .concat(
+      users.map(function (user) {
+        const selected = user.uid === current ? " selected" : "";
+        return '<option value="' + escapeHtml(user.uid) + '"' + selected + ">" + escapeHtml(user.name) + "</option>";
+      }),
+    )
+    .join("");
+}
+
+function renderBindingEditor() {
+  const host = elements.bindingEditor;
+  if (!host) return;
+  const draft = state.bindingDraft;
+  const record = draft ? null : bindingOf(state.selectedBinding);
+  if (!draft && !record) {
+    elements.bindingTitle.textContent = "选一个用户";
+    host.innerHTML = '<p class="empty">左边选一个人，或者点右上角「新增」。</p>';
+    if (elements.bindingDelete) elements.bindingDelete.classList.add("is-hidden");
+    return;
+  }
+  const rows = record ? record.bindings || [] : [];
+  const scriptId = state.bindingScript || "";
+  const parts = [];
+  if (draft) {
+    elements.bindingTitle.textContent = "新增绑定";
+    parts.push('<div class="binding-block"><div class="queue-block-head"><span>这个人是谁</span></div><div class="queue-grid">' +
+      '<label class="queue-field"><span class="queue-label">QQ 号</span><input type="text" id="bind-qq" value="' + escapeHtml(draft.qq) + '" placeholder="纯数字"></label>' +
+      '<label class="queue-field"><span class="queue-label">昵称（随便填，方便认）</span><input type="text" id="bind-display" value="' + escapeHtml(draft.display) + '" placeholder="群昵称"></label>' +
+      "</div></div>");
+  } else {
+    elements.bindingTitle.textContent = (record.display || record.qq) + " · " + record.qq;
+    parts.push('<div class="binding-block"><div class="queue-block-head"><span>已绑定 ' + rows.length + " 个账号</span></div>");
+    if (!rows.length) {
+      parts.push('<p class="empty">这个人还没绑账号。</p>');
+    } else {
+      parts.push('<ul class="binding-rows">');
+      rows.forEach(function (row) {
+        parts.push('<li class="binding-row"><span class="binding-row-main">' + escapeHtml(row.scriptName) + " / " + escapeHtml(row.userName) + "</span>" +
+          '<button class="mini-button is-danger" data-unbind="' + escapeHtml(row.scriptId) + '" type="button">解绑</button></li>');
+      });
+      parts.push("</ul>");
+    }
+    parts.push("</div>");
+  }
+  parts.push('<div class="binding-block"><div class="queue-block-head"><span>绑一个账号</span></div><div class="queue-grid">' +
+    '<label class="queue-field"><span class="queue-label">托管项</span><select id="bind-script">' + bindingScriptOptions(scriptId) + "</select></label>" +
+    '<label class="queue-field"><span class="queue-label">账号</span><select id="bind-user">' + bindingUserOptions(scriptId, "") + "</select></label>" +
+    "</div>" +
+    '<p class="hint" id="bind-hint">一个账号只能绑给一个人；绑上之后 /mas 启动 就会跑它。</p>' +
+    '<div class="sched-inline"><button class="primary-button" id="bind-add" type="button"><i class="mdi mdi-link"></i> 绑定</button>' +
+    (draft ? '<button class="mini-button" id="bind-cancel" type="button">取消</button>' : "") +
+    "</div></div>");
+  host.innerHTML = parts.join("");
+  if (elements.bindingDelete) {
+    elements.bindingDelete.classList.toggle("is-hidden", Boolean(draft) || !record);
+  }
+  const scriptSelect = host.querySelector("#bind-script");
+  if (scriptSelect) {
+    scriptSelect.addEventListener("change", function () {
+      state.bindingScript = scriptSelect.value;
+      loadBindingUsers(scriptSelect.value).then(function () { renderBindingEditor(); });
+    });
+  }
+  const qqInput = host.querySelector("#bind-qq");
+  const displayInput = host.querySelector("#bind-display");
+  if (qqInput) qqInput.addEventListener("input", function () { if (state.bindingDraft) state.bindingDraft.qq = qqInput.value.trim(); });
+  if (displayInput) displayInput.addEventListener("input", function () { if (state.bindingDraft) state.bindingDraft.display = displayInput.value.trim(); });
+  host.querySelectorAll("[data-unbind]").forEach(function (node) {
+    node.addEventListener("click", function () { removeBinding(state.selectedBinding, node.dataset.unbind); });
+  });
+  const addButton = host.querySelector("#bind-add");
+  if (addButton) addButton.addEventListener("click", addBinding);
+  const cancelButton = host.querySelector("#bind-cancel");
+  if (cancelButton) cancelButton.addEventListener("click", function () { state.bindingDraft = null; renderBindingList(); renderBindingEditor(); });
+}
+
+async function loadBindingUsers(scriptId) {
+  state.bindingUsers = state.bindingUsers || {};
+  if (!scriptId) return;
+  if (state.bindingUsers[scriptId]) return;
+  try {
+    const data = await callApi("users", { scriptId: scriptId });
+    state.bindingUsers[scriptId] = data.users || [];
+  } catch (error) {
+    setError(error);
+  }
+}
+
+async function addBinding() {
+  const host = elements.bindingEditor;
+  if (!host) return;
+  const qq = state.bindingDraft ? state.bindingDraft.qq : state.selectedBinding;
+  const scriptSelect = host.querySelector("#bind-script");
+  const userSelect = host.querySelector("#bind-user");
+  const scriptId = scriptSelect ? scriptSelect.value : "";
+  const userId = userSelect ? userSelect.value : "";
+  if (!qq) { showToast("先填 QQ 号。", true); return; }
+  if (!scriptId) { showToast("先选托管项。", true); return; }
+  if (!userId) { showToast("先选账号。", true); return; }
+  try {
+    await postApi("binding/add", {
+      qq: qq,
+      display: state.bindingDraft ? state.bindingDraft.display : (bindingOf(qq) || {}).display || "",
+      scriptId: scriptId,
+      userId: userId,
+    });
+  } catch (error) {
+    setError(error);
+    return;
+  }
+  showToast("绑好了。");
+  state.bindingDraft = null;
+  state.selectedBinding = qq;
+  state.bindingScript = scriptId;
+  await loadBindings();
+  renderBindingEditor();
+}
+
+async function removeBinding(qq, scriptId) {
+  if (!qq) return;
+  try {
+    await postApi("binding/remove", { qq: qq, scriptId: scriptId || "" });
+  } catch (error) {
+    setError(error);
+    return;
+  }
+  showToast("解绑了。");
+  await loadBindings();
+  renderBindingEditor();
+}
 // ---- 调度中心 ----
 
 const SCHED_STATUS_LABELS = {
@@ -2157,12 +2540,16 @@ function renderSettingGroups() {
   });
   const webhookActive = state.settingGroup === "__webhook" ? " is-active" : "";
   rows.push('<li class="script-item' + webhookActive + '" data-setting-group="__webhook"><div class="script-name">通知渠道</div><div class="script-meta">' + (state.webhooks || []).length + " 个 Webhook</div></li>");
+  const subActive = state.settingGroup === "__subscribers" ? " is-active" : "";
+  const subCount = Array.isArray(state.subscribers) ? state.subscribers.length + " 个会话" : "看谁在收";
+  rows.push('<li class="script-item' + subActive + '" data-setting-group="__subscribers"><div class="script-name">运行通知</div><div class="script-meta">' + subCount + "</div></li>");
   elements.settingGroups.innerHTML = rows.join("");
   elements.settingGroups.querySelectorAll("[data-setting-group]").forEach((node) => {
     node.addEventListener("click", () => {
       state.settingGroup = node.dataset.settingGroup;
       renderSettingGroups();
       if (state.settingGroup === "__webhook" && !state.webhooks.length) loadWebhooks();
+      if (state.settingGroup === "__subscribers" && state.subscribers === null) loadSubscribers();
       renderSettingEditor();
     });
   });
@@ -2208,6 +2595,11 @@ function renderSettingEditor() {
   if (state.settingGroup === "__webhook") {
     elements.settingTitle.textContent = "通知渠道";
     renderWebhookPanel();
+    return;
+  }
+  if (state.settingGroup === "__subscribers") {
+    elements.settingTitle.textContent = "运行通知";
+    renderSubscriberPanel();
     return;
   }
   if (!state.settings) {
@@ -2285,6 +2677,54 @@ async function loadWebhooks() {
     showToast(error.message, true);
   }
   renderWebhookPanel();
+}
+
+async function loadSubscribers() {
+  try {
+    const payload = await callApi("notifications", {});
+    state.subscribers = Array.isArray(payload.subscribers) ? payload.subscribers : [];
+  } catch (error) {
+    state.subscribers = [];
+    setError(error.message);
+  }
+  renderSettingGroups();
+  renderSettingEditor();
+}
+
+function renderSubscriberPanel() {
+  if (!elements.settingEditor) return;
+  const list = Array.isArray(state.subscribers) ? state.subscribers : null;
+  let body;
+  if (list === null) {
+    body = '<p class="empty">正在读取订阅列表…</p>';
+  } else if (!list.length) {
+    body = '<p class="empty">还没有人订阅。</p>';
+  } else {
+    body = '<ul class="subscriber-list">' + list
+      .map(function (item) {
+        const title = item.display || item.qq || item.umo;
+        const meta = [item.qq ? "QQ " + item.qq : "", item.umo].filter(Boolean).join(" · ");
+        return '<li class="subscriber-row"><div class="subscriber-main"><div class="script-name">' + escapeHtml(title) + '</div><div class="script-meta">' + escapeHtml(meta) + '</div></div><button class="mini-button is-danger" data-sub-remove="' + escapeHtml(item.umo) + '">移除</button></li>';
+      })
+      .join("") + "</ul>";
+  }
+  elements.settingEditor.innerHTML =
+    '<div class="task-group"><div class="task-group-title">运行通知订阅者</div>' + body +
+    '<p class="hint">谁想收通知，就在群里或私聊机器人发 <code>/mas 订阅</code>，跑完一个脚本、失败、卡住都会推给他；退订发 <code>/mas 取消订阅</code>。这里是只读名单，删掉某一行等于替他退订。</p></div>';
+}
+
+async function removeSubscriber(umo) {
+  if (!umo) return;
+  try {
+    await postApi("notification/remove", { umo: umo });
+  } catch (error) {
+    setError(error.message);
+    return;
+  }
+  state.subscribers = (state.subscribers || []).filter(function (item) { return item.umo !== umo; });
+  renderSettingGroups();
+  renderSettingEditor();
+  showToast("已移除这个订阅会话。");
 }
 
 function renderWebhookPanel() {
@@ -2807,7 +3247,7 @@ function currentScriptType() {
   return item ? String(item.type || "") : "";
 }
 
-function emulatorBindBlock(data) {
+function emulatorBindInner(data) {
   const current = String((data.Emulator || {}).Id || "-");
   const options = (state.emulators || [])
     .map(function (item) {
@@ -2821,33 +3261,313 @@ function emulatorBindBlock(data) {
   select += "</select>";
   const indexValue = escapeHtml((data.Emulator || {}).Index == null ? "" : (data.Emulator || {}).Index);
   return (
-    '<section class="task-group"><h3>模拟器绑定</h3><div class="task-grid">' +
+    '<div class="task-grid">' +
     '<label class="task-field"><span>模拟器</span>' + select + "</label>" +
     '<label class="task-field"><span>设备槽位</span><input class="task-input" type="text" data-conf-path="Emulator.Index" value="' + indexValue + '" /></label>' +
-    "</div></section>"
+    "</div>"
   );
+}
+
+// ---- MaaEnd 原生任务参数（售卖弹性物资） ----
+
+function maaendNativeTaskName(info) {
+  const task = (info && info.task) || {};
+  return String(task.name || "AutoSell");
+}
+
+function maaendNativeFieldHtml(field) {
+  const key = String(field.key || "");
+  const label = String(field.label || key);
+  const kind = String(field.kind || "");
+  if (kind === "switch") {
+    return '<label class="task-field"><span>' + escapeHtml(label) + '</span><span class="check-line"><input type="checkbox" data-native-key="' + escapeHtml(key) + '"' + (field.value ? " checked" : "") + " /> 启用</span></label>";
+  }
+  if (kind === "select") {
+    const choices = field.choices || [];
+    let select = '<select class="task-input" data-native-key="' + escapeHtml(key) + '">';
+    choices.forEach(function (item) {
+      const value = String(item.value);
+      select += '<option value="' + escapeHtml(value) + '"' + (String(field.value) === value ? " selected" : "") + ">" + escapeHtml(String(item.label || value)) + "</option>";
+    });
+    select += "</select>";
+    return '<label class="task-field"><span>' + escapeHtml(label) + "</span>" + select + "</label>";
+  }
+  if (kind === "checkbox") {
+    const picked = Array.isArray(field.value) ? field.value.map(String) : [];
+    const chips = (field.choices || []).map(function (item) {
+      const value = String(item.value);
+      return '<label class="toggle-item"><input type="checkbox" data-native-option="' + escapeHtml(key) + '" value="' + escapeHtml(value) + '"' + (picked.indexOf(value) >= 0 ? " checked" : "") + " /> <span>" + escapeHtml(String(item.label || value)) + "</span></label>";
+    }).join("");
+    return '<div class="task-field task-field-wide"><span>' + escapeHtml(label) + '</span><div class="toggle-grid">' + chips + "</div></div>";
+  }
+  if (kind === "inputs") {
+    return (field.inputs || []).map(function (spec) {
+      const name = String(spec.name || "");
+      const type = spec.number ? "number" : "text";
+      const tip = spec.default == null || spec.default === "" ? "" : "默认 " + spec.default;
+      return '<label class="task-field"><span>' + escapeHtml(String(spec.label || name)) + '</span><input class="task-input" type="' + type + '" data-native-key="' + escapeHtml(name) + '" value="' + escapeHtml(spec.value == null ? "" : String(spec.value)) + '" placeholder="' + escapeHtml(String(tip)) + '" /></label>';
+    }).join("");
+  }
+  return "";
+}
+
+function maaendNativeHostId(scope) {
+  return scope === "user" ? "maaend-user-body" : "maaend-native-body";
+}
+
+function maaendNativeCache(scope) {
+  return scope === "user" ? state.maaendNativeUser : state.maaendNative;
+}
+
+function maaendNativeHint(scope, info) {
+  if (scope === "user") {
+    const base = String(info.baseLabel || info.base || "原生");
+    const file = String(info.configPath || info.path || "");
+    return "这个账号用的是「" + base + "」基线，改的是 " + file +
+      "。改完下一次运行就生效；要换基线回「基础」页改。";
+  }
+  return "改的是 MaaEnd 安装目录的 " + String(info.path || "") +
+    "。原生基线的账号直接读这份，改了全局生效；共享 / 独立基线的账号读 AUTO-MAS 目录里的副本，到账号的任务配置页改。";
+}
+
+function maaendNativeBody(scope) {
+  const point = scope === "user" ? "user" : "script";
+  const cached = maaendNativeCache(point);
+  if (!cached || (!cached.info && !cached.error)) {
+    return '<p class="hint">正在读 MaaEnd 配置…</p>';
+  }
+  const retryId = point === "user" ? "maaend-user-retry" : "maaend-native-retry";
+  if (cached.error) {
+    return '<p class="hint">' + escapeHtml(cached.error) + '</p><button class="mini-button" id="' + retryId + '">重试</button>';
+  }
+  const info = cached.info || {};
+  const tasks = info.tasks || [];
+  let html = '<p class="hint">' + escapeHtml(maaendNativeHint(point, info)) + " 下面是这份配置里带参数的任务，点标题展开。</p>";
+  if (!tasks.length) {
+    html += '<p class="hint">这份 MaaEnd 配置里没找到能改的任务参数。</p><button class="mini-button" id="' + retryId + '">重新读一次</button>';
+    return html;
+  }
+  tasks.forEach(function (task) {
+    const label = String(task.label || task.name || "");
+    const title = "MaaEnd · " + label;
+    const meta = (task.fields || []).length + " 项" + (task.enabled === false ? " · 已停用" : "");
+    let inner = "";
+    if (task.present === false) inner += '<p class="hint">这个任务目前不在 MaaEnd 配置里，保存后会按默认值加进去。</p>';
+    inner += '<div class="task-grid">';
+    (task.fields || []).forEach(function (field) {
+      inner += maaendNativeFieldHtml(field);
+    });
+    inner += "</div>";
+    inner += '<div class="native-actions"><button class="mini-button" data-native-task="' + escapeHtml(String(task.name || "")) + '" data-native-scope="' + point + '">保存这个任务</button><span class="hint" data-native-state="' + escapeHtml(String(task.name || "")) + '"></span></div>';
+    html += scriptSubFold(title, inner, meta);
+  });
+  return html;
+}
+
+function maaendNativeBlock(scope) {
+  const point = scope === "user" ? "user" : "script";
+  const info = (maaendNativeCache(point) || {}).info || {};
+  const tasks = info.tasks || [];
+  const title = point === "user" ? "MaaEnd 参数（这个账号的配置）" : "MaaEnd 原生任务参数";
+  const meta = tasks.length ? tasks.length + " 个任务" : "";
+  return scriptGroup(title, '<div id="' + maaendNativeHostId(point) + '">' + maaendNativeBody(point) + "</div>", meta);
+}
+
+function refreshMaaendNative(scope) {
+  const point = scope === "user" ? "user" : "script";
+  const host = document.getElementById(maaendNativeHostId(point));
+  if (!host) return;
+  host.innerHTML = maaendNativeBody(point);
+  const fold = host.closest("details");
+  const meta = fold ? fold.querySelector("summary .fold-meta") : null;
+  const info = (maaendNativeCache(point) || {}).info || {};
+  const tasks = info.tasks || [];
+  if (meta) meta.textContent = tasks.length ? tasks.length + " 个任务" : "";
+}
+
+async function loadMaaendNativeFor(scope, scriptId, userId) {
+  const point = scope === "user" ? "user" : "script";
+  const id = String(scriptId || activeScriptId() || "");
+  const uid = point === "user" ? String(userId || "") : "";
+  if (!id || (point === "user" && !uid)) return;
+  const stamp = id + "|" + uid;
+  const existing = maaendNativeCache(point);
+  if (existing && existing.scriptId + "|" + existing.userId === stamp && (existing.info || existing.error)) return;
+  const skeleton = { scriptId: id, userId: uid, scope: point };
+  if (point === "user") state.maaendNativeUser = skeleton;
+  else state.maaendNative = skeleton;
+  refreshMaaendNative(point);
+  try {
+    const data = await callApi("maaend/native", uid ? { scriptId: id, userId: uid } : { scriptId: id });
+    const cached = maaendNativeCache(point);
+    if (!cached || cached.scriptId + "|" + cached.userId !== stamp) return;
+    const value = { scriptId: id, userId: uid, scope: point, info: (data && data.native) || {} };
+    if (point === "user") state.maaendNativeUser = value;
+    else state.maaendNative = value;
+  } catch (error) {
+    const cached = maaendNativeCache(point);
+    if (!cached || cached.scriptId + "|" + cached.userId !== stamp) return;
+    const value = { scriptId: id, userId: uid, scope: point, error: error.message };
+    if (point === "user") state.maaendNativeUser = value;
+    else state.maaendNative = value;
+  }
+  refreshMaaendNative(point);
+}
+
+function loadMaaendNative(scriptId) {
+  return loadMaaendNativeFor("script", scriptId, "");
+}
+
+function loadMaaendUser(scriptId, userId) {
+  return loadMaaendNativeFor("user", scriptId, userId);
+}
+
+function collectMaaendNativeValues(scope, host) {
+  const point = scope === "user" ? "user" : "script";
+  const values = {};
+  const root = host || document.getElementById(maaendNativeHostId(point));
+  if (!root) return values;
+  const groups = {};
+  root.querySelectorAll("[data-native-option]").forEach(function (node) {
+    const key = String(node.getAttribute("data-native-option") || "");
+    if (!key) return;
+    if (!groups[key]) groups[key] = [];
+    if (node.checked) groups[key].push(String(node.value || ""));
+  });
+  root.querySelectorAll("[data-native-key]").forEach(function (node) {
+    const key = String(node.getAttribute("data-native-key") || "");
+    if (!key) return;
+    if (node.type === "checkbox") values[key] = !!node.checked;
+    else values[key] = String(node.value == null ? "" : node.value);
+  });
+  Object.keys(groups).forEach(function (key) {
+    values[key] = groups[key];
+  });
+  return values;
+}
+
+function applyNativeValues(info, taskName, values) {
+  const tasks = (info && info.tasks) || [];
+  const task = tasks.find(function (item) {
+    return String(item.name || "") === String(taskName || "");
+  });
+  if (!task) return;
+  (task.fields || []).forEach(function (field) {
+    const key = String(field.key || "");
+    const kind = String(field.kind || "");
+    if (!Object.prototype.hasOwnProperty.call(values, key)) return;
+    if (kind === "switch") field.value = !!values[key];
+    else if (kind === "select") field.value = String(values[key]);
+    else if (kind === "checkbox") field.value = values[key];
+    else if (kind === "inputs") {
+      (field.inputs || []).forEach(function (spec) {
+        const name = String(spec.name || "");
+        if (Object.prototype.hasOwnProperty.call(values, name)) spec.value = values[name];
+      });
+    }
+  });
+}
+
+async function saveMaaendNative(taskName, button, scope) {
+  const point = scope === "user" || (button && button.getAttribute("data-native-scope") === "user") ? "user" : "script";
+  const cached = maaendNativeCache(point);
+  if (!cached || !cached.info) {
+    showToast("MaaEnd 配置还没读出来", true);
+    return;
+  }
+  const name = String(taskName || "");
+  if (!name) {
+    showToast("没认出是哪个任务", true);
+    return;
+  }
+  const host = button ? button.closest("details") : null;
+  const stateNode = host ? host.querySelector("[data-native-state]") : null;
+  const values = collectMaaendNativeValues(point, host);
+  if (!Object.keys(values).length) {
+    showToast("这块没有可保存的项", true);
+    return;
+  }
+  if (stateNode) stateNode.textContent = "保存中…";
+  if (button) button.disabled = true;
+  try {
+    const payload = {
+      scriptId: cached.scriptId,
+      task: name,
+      values: values,
+      mtime: cached.info.mtime,
+    };
+    if (point === "user") payload.userId = cached.userId;
+    const result = await postApi("maaend/native/save", payload);
+    const changed = (result.changed || []).length;
+    showToast("已写入 MaaEnd 配置" + (changed ? "（" + changed + " 项）" : "（没有变化）"));
+    if (typeof result.mtime === "number") cached.info.mtime = result.mtime;
+    applyNativeValues(cached.info, name, values);
+    if (stateNode) stateNode.textContent = "已保存 · " + (changed ? changed + " 项" : "无变化");
+  } catch (error) {
+    if (stateNode) stateNode.textContent = "";
+    showToast(error.message, true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function scriptFoldOpened(title) {
+  return !!(state.scriptFoldOpen && state.scriptFoldOpen.has(title));
+}
+
+function foldOpenAttr(title) {
+  return scriptFoldOpened(title) ? " open" : "";
+}
+
+function scriptGroup(title, inner, extra) {
+  if (!inner) return "";
+  return '<section class="task-group script-group"><details class="script-fold"' + foldOpenAttr(title) +
+    ' data-fold-title="' + escapeHtml(title) + '"><summary><span class="fold-title">' + escapeHtml(title) +
+    '</span><span class="fold-meta">' + escapeHtml(String(extra || "")) + '</span></summary><div class="script-fold-body">' + inner + "</div></details></section>";
+}
+
+function scriptSubFold(title, inner, extra) {
+  return '<details class="script-fold native-task"' + foldOpenAttr(title) +
+    ' data-fold-title="' + escapeHtml(title) + '"><summary><span class="fold-title">' + escapeHtml(title) +
+    '</span><span class="fold-meta">' + escapeHtml(String(extra || "")) + '</span></summary><div class="script-fold-body">' + inner + "</div></details>";
+}
+
+function collectScriptFolds(host) {
+  if (!host) return null;
+  const opened = new Set();
+  host.querySelectorAll("details.script-fold[open]").forEach(function (node) {
+    const title = node.getAttribute("data-fold-title") || "";
+    if (title) opened.add(title);
+  });
+  return opened;
 }
 
 function renderScriptForm() {
   const data = state.scriptEditing ? state.scriptEditing.data : null;
   if (!data || !elements.scriptForm) return;
+  const opened = collectScriptFolds(elements.scriptForm);
+  if (opened && (opened.size || state.scriptFoldOpen)) state.scriptFoldOpen = opened;
   const type = currentScriptType();
   const schema = SCRIPT_SCHEMA[type] ? SCRIPT_SCHEMA : null;
   const parts = [];
   state.configRoot = data;
   if (data.Info && typeof data.Info === "object") {
     const inner = renderSchemaGroup(SCRIPT_SCHEMA, type, ["Info"], data.Info, 0);
-    if (inner) parts.push('<section class="task-group"><h3>基本信息</h3>' + inner + "</section>");
+    if (inner) parts.push(scriptGroup("基本信息", inner));
   }
-  parts.push(emulatorBindBlock(data));
+  parts.push(scriptGroup("模拟器绑定", emulatorBindInner(data)));
   Object.keys(data).forEach(function (key) {
     if (key === "Info" || key === "Emulator" || key === "UserData") return;
     const bag = data[key];
     if (!bag || typeof bag !== "object" || Array.isArray(bag) || !Object.keys(bag).length) return;
     const inner = renderSchemaGroup(SCRIPT_SCHEMA, type, [key], bag, 0);
     if (!inner) return;
-    parts.push('<section class="task-group"><h3>' + escapeHtml(CONFIG_GROUP_LABELS[key] || SCRIPT_GROUP_LABELS[key] || key) + "</h3>" + inner + "</section>");
+    parts.push(scriptGroup(CONFIG_GROUP_LABELS[key] || SCRIPT_GROUP_LABELS[key] || key, inner));
   });
+  if (type === "MaaEndConfig") {
+    if (!state.maaendNative || state.maaendNative.scriptId !== activeScriptId()) loadMaaendNative(activeScriptId());
+    parts.push(maaendNativeBlock());
+  }
   if (!schema) {
     parts.push('<p class="hint">这个类型的托管配置没有字段表（可能是 AUTO-MAS 新版本加的脚本），用下面的完整 JSON 改。</p>');
   }
@@ -2893,6 +3613,8 @@ async function loadScriptIntoDrawer() {
   try {
     const data = await postApi("script/detail", { scriptId });
     state.scriptEditing = { scriptId, data: data.config || {} };
+    state.maaendNative = null;
+    state.maaendNativeUser = null;
     if (!state.emulators.length) {
       try {
         const list = await callApi("emulators", {});
@@ -3030,6 +3752,8 @@ async function openScriptDrawer() {
     showToast("先选一个托管项", true);
     return;
   }
+  state.scriptFoldOpen = null;
+  if (elements.scriptForm) elements.scriptForm.innerHTML = "";
   // 账号抽屉和托管抽屉是两块独立界面，同一时间只留一个；账号那边有改动就先问一句。
   if (!elements.drawer.classList.contains("is-hidden")) {
     if (drawerDirty()) {
@@ -3259,9 +3983,14 @@ async function openEditor(userId) {
     state.taskFoldScope = "";
     state.taskFoldOpen = [];
     state.customInfrastFiles = null;
+    state.maaendNativeUser = null;
+    state.supplySearch = "";
+    state.supplyCat = "all";
+    state.supplyOnlySet = false;
     if (state.maafwScript !== scriptId) {
       state.maafwDefs = null;
       state.maafwScript = "";
+      state.maafwOpenTasks = [];
       state.whimboxScript = "";
       state.whimboxCatalog = null;
       state.oknteScript = "";
@@ -3589,31 +4318,6 @@ function supplyRowHtml(key, label, value) {
   ].join("");
 }
 
-function supplyPlanHtml() {
-  const parsed = supplyPlanMap();
-  const map = parsed.map || {};
-  const known = {};
-  const rows = MAAEND_SUPPLY_ITEMS.map(function (item) {
-    known[item.key] = true;
-    const value = map[item.key];
-    return supplyRowHtml(item.key, item.label, value === undefined || value === null ? "" : String(value));
-  });
-  Object.keys(map).forEach(function (key) {
-    if (known[key]) return;
-    const value = map[key];
-    rows.push(supplyRowHtml(key, key.replace(/^SupplyPlanLimit_/, ""), value === undefined || value === null ? "" : String(value)));
-  });
-  const filled = Object.keys(map).filter(function (key) {
-    return String(map[key] === undefined || map[key] === null ? "" : map[key]).trim() !== "";
-  }).length;
-  return [
-    '<details class="task-collapse"><summary title="培养道具目标">',
-    '<span class="fold-title">展开编辑各材料目标</span>',
-    '<span class="fold-meta">已设 ' + filled + " / 共 " + rows.length + " 项</span></summary>",
-    '<div class="task-field task-field-wide"><p class="hint">经验类按折算经验填，其余按件数；填 0 表示不纳入本轮规划，单项不超过 3000000000。全部达标后结束任务。</p>',
-    '<div class="supply-grid">' + rows.join("") + "</div></div></details>",
-  ].join("");
-}
 const OKNTE_TASK_OPTIONS = [
   { value: "1", label: "启动游戏" },
   { value: "2", label: "日常任务" },
@@ -3743,11 +4447,8 @@ function maaendFieldOverride(full, node) {
       label: base.label || "每日只做一次的任务（做完当天跳过）",
     });
   }
-  if (rel === "SupplyPlanLimits") {
-    return Object.assign({}, base, { kind: "json", label: "培养道具目标" });
-  }
-  if (rel === "ProtocolSpaceObtainModeClaim") {
-    return Object.assign({}, base, { kind: "enum", options: MAAEND_PROTOCOL_CLAIM_OPTIONS, label: "库存任务领取方式" });
+  if (rel === "SupplyPlanLimits" || rel === "ProtocolSpaceObtainModeClaim" || rel === "IfSanity" || rel === "IfAutoUseSpMedication") {
+    return Object.assign({}, base, { kind: "skip" });
   }
   const opt = state.maaendOptions;
   if (!opt) return null;
@@ -3801,6 +4502,9 @@ function scriptFieldOverride(full, node) {
       options: OKNTE_TASK_OPTIONS,
       label: "启动任务（-t N）",
     });
+  }
+  if (type === "BetterGIConfig" && full === "OneDragon.Queue") {
+    return { kind: "skip" };
   }
   if (type === "OkwwConfig" && full === "Task.AdditionalTasks") {
     return Object.assign({}, base, {
@@ -3920,6 +4624,7 @@ function renderSchemaGroup(schema, typeKey, path, bag, depth) {
     const full0 = path.concat([key]).join(".");
     const overrideNode = maaendFieldOverride(full0, fields[key] || {}) || scriptFieldOverride(full0, fields[key] || {});
     const node = overrideNode || fields[key] || {};
+    if (overrideNode && overrideNode.kind === "skip") return;
     let value = bag[key];
     if (value === null || value === undefined) {
       // 有明确候选清单的空字段（比如还没选过的采集路线）也给控件，否则用户点不动
@@ -4041,10 +4746,10 @@ function foldSections(html, mode) {
   const none = mode === "none";
   let index = 0;
   return String(html || "")
-    .replace(/<section class="task-group">\s*<h3>/g, function () {
+    .replace(/<section class="task-group([^"]*)">\s*<h3>/g, function (match, extra) {
       const open = none ? false : first ? index === 0 : true;
       index += 1;
-      return '<details class="task-section"' + (open ? " open" : "") + "><summary>";
+      return '<details class="task-section' + (extra || "") + '"' + (open ? " open" : "") + "><summary>";
     })
     .replace(/<\/h3>/g, "</summary>")
     .replace(/<\/section>/g, "</details>");
@@ -4347,17 +5052,42 @@ function renderSchemaTaskForm(scriptType, data) {
     const bag = data[key];
     return bag && typeof bag === "object" && !Array.isArray(bag) && Object.keys(bag).length > 0;
   });
+  // MaaEnd 的任务页分成三段排：先是要做什么（Task 里的开关），再是理管 / 库存目标，
+  // 剩下的采集路线、基质、危境这类细节参数放最后。其余脚本还是按原来的分组顺序。
+  const splitToggles = scriptType === "MaaEndConfig";
+  const headParts = [];
+  const tailParts = [];
+  function sectionOf(title, inner) {
+    return (
+      '<section class="task-group"><h3>' +
+      escapeHtml(title) +
+      "</h3>" +
+      inner +
+      "</section>"
+    );
+  }
   const html = groups
     .map(function (group) {
-      const inner = renderSchemaGroup(CONFIG_SCHEMA, scriptType, [group], data[group], 0);
+      const bag = data[group];
+      const title = CONFIG_GROUP_LABELS[group] || group;
+      if (splitToggles) {
+        const boolBag = {};
+        const restBag = {};
+        Object.keys(bag).forEach(function (key) {
+          if (typeof bag[key] === "boolean") boolBag[key] = bag[key];
+          else restBag[key] = bag[key];
+        });
+        if (Object.keys(boolBag).length && Object.keys(restBag).length) {
+          const toggleInner = renderSchemaGroup(CONFIG_SCHEMA, scriptType, [group], boolBag, 0);
+          const restInner = renderSchemaGroup(CONFIG_SCHEMA, scriptType, [group], restBag, 0);
+          if (toggleInner) headParts.push(sectionOf(title, toggleInner));
+          if (restInner) tailParts.push(sectionOf(title + "参数", restInner));
+          return "";
+        }
+      }
+      const inner = renderSchemaGroup(CONFIG_SCHEMA, scriptType, [group], bag, 0);
       if (!inner) return "";
-      return (
-        '<section class="task-group"><h3>' +
-        escapeHtml(CONFIG_GROUP_LABELS[group] || group) +
-        "</h3>" +
-        inner +
-        "</section>"
-      );
+      return sectionOf(title, inner);
     })
     .filter(Boolean)
     .join("");
@@ -4380,9 +5110,18 @@ function renderSchemaTaskForm(scriptType, data) {
         "</section>";
     }
   }
+  // MaaEnd 的理管任务（执行策略 + 库存目标）夹在任务勾选和细节参数中间，和别的组一样能折叠。
+  let sanity = "";
+  if (scriptType === "MaaEndConfig") {
+    sanity = renderMaaendSanitySection(data);
+  }
   // ZZZ-OD 的分组（游戏 / 一条龙 …）默认全部收起，先给个目录感，点开再看细节。
   const collapseAll = scriptType === "ZzzOdConfig";
-  return foldSections(html + extraHtml, collapseAll ? "none" : "first");
+  const ordered = headParts.join("") + sanity + tailParts.join("") + html + extraHtml;
+  const folded = foldSections(ordered, collapseAll ? "none" : "first");
+  // 预备编队是账号级的（读 zzz-od 的 team.yml），不参与分组折叠，单独一块。
+  if (scriptType === "ZzzOdConfig") return folded + renderZzzTeamsBlock();
+  return folded;
 }
 
 function configWriteRoot() {
@@ -5099,57 +5838,285 @@ function bettergiGroupNames() {
   return names;
 }
 
-function bettergiGroupsHtml() {
-  const bag = oneDragonBag() || {};
-  const picked = parseLooseList(bag.Groups).map(function (name) {
-    return String(name);
-  });
-  const names = bettergiGroupNames();
-  const rest = names.filter(function (name) {
-    return picked.indexOf(name) < 0;
-  });
-  const rows = picked
-    .map(function (name, index) {
-      return (
-        '<div class="ord-row"><span class="ord-name">' +
-        escapeHtml(name) +
-        '</span><span class="ord-actions">' +
-        '<button class="mini-button" type="button" data-od="1" data-bgi-group-up="' +
-        index +
-        '" title="上移">↑</button>' +
-        '<button class="mini-button" type="button" data-od="1" data-bgi-group-down="' +
-        index +
-        '" title="下移">↓</button>' +
-        '<button class="mini-button is-danger" type="button" data-od="1" data-bgi-group-del="' +
-        index +
-        '">移除</button>' +
-        "</span></div>"
-      );
+// ---- BetterGI 一条龙的执行顺序（OneDragon.Queue 驱动）----
+// BetterGI 只有 8 个内置组和若干自定义组；真正决定「先跑什么」的是 MAS 的队列
+// （OneDragon.Queue），Group 顺序只是开关表。这里读 Queue、改顺序后再写回 Queue。
+const BGI_KIND_LABELS = {
+  builtin: "内置组",
+  js: "JS",
+  pathing: "地图追踪",
+  scriptgroup: "配置组",
+  keymouse: "录制",
+  custom: "自定义",
+};
+
+const BGI_SOURCE_TEXT = {
+  queue: "顺序来自 AUTO-MAS 的可视化队列，下面就是实际执行顺序。",
+  config: "顺序来自 BetterGI 配置里的 TaskOrder（下面就是实际顺序）。改完点保存会写成 MAS 的可视化队列。",
+  groups: "这个账号还没排过队，先按 Groups 开关表的顺序显示，实际顺序可能和 BetterGI 配置不同。",
+};
+
+function bgiStamp(scriptId, userId) {
+  return String(scriptId || "") + "|" + String(userId || "") + "|" + String((state.editing && state.editing.scriptId) || "");
+}
+
+function bgiCandidateList(kind) {
+  const cands = (state.bgiCandidates || {})[kind];
+  return Array.isArray(cands) ? cands : [];
+}
+
+function bgiItems() {
+  const order = state.bgiOrder;
+  return order && Array.isArray(order.items) ? order.items : [];
+}
+
+function bgiItemIndex(name) {
+  const items = bgiItems();
+  for (let index = 0; index < items.length; index += 1) {
+    if (items[index] && items[index].name === name) return index;
+  }
+  return -1;
+}
+
+function bgiKindTag(kind) {
+  return BGI_KIND_LABELS[kind] || "自定义";
+}
+
+function bettergiQueueRows() {
+  const items = bgiItems();
+  if (!items.length) {
+    return '<p class="hint">一条龙是空的，加几项进来它才会干活。</p>';
+  }
+  return items
+    .map(function (item, index) {
+      const name = String((item && item.name) || "");
+      const kind = String((item && item.kind) || "custom");
+      return [
+        '<div class="ord-row bgiq-row">',
+        '<span class="ord-index">' + (index + 1) + "</span>",
+        '<span class="ord-name">' + escapeHtml(name) + "</span>",
+        '<span class="bgiq-kind">' + escapeHtml(bgiKindTag(kind)) + "</span>",
+        '<label class="check-inline"><input type="checkbox" data-od="1" data-bgiq-check="' + index + '"' +
+          (item.enabled === false ? "" : " checked") + ' /><span>跑</span></label>',
+        '<span class="ord-actions">',
+        '<button class="mini-button" type="button" data-od="1" data-bgiq-up="' + index + '" title="上移">↑</button>',
+        '<button class="mini-button" type="button" data-od="1" data-bgiq-down="' + index + '" title="下移">↓</button>',
+        '<button class="mini-button is-danger" type="button" data-od="1" data-bgiq-del="' + index + '">移除</button>',
+        "</span></div>",
+      ].join("");
     })
     .join("");
-  const restHtml = rest.length
-    ? '<p class="hint">点一下加进来：</p><div class="chip-row">' +
-      rest
-        .map(function (name) {
-          return (
-            '<button class="chip-add" type="button" data-od="1" data-bgi-group-add="' +
-            escapeHtml(name) +
-            '">+ ' +
-            escapeHtml(name) +
-            "</button>"
-          );
-        })
-        .join("") +
-      "</div>"
-    : "";
+}
+
+function bgiCandidateChips(kind, label, candidates) {
+  const items = bgiItems();
+  const picked = {};
+  items.forEach(function (item) {
+    if (item && item.name) picked[String(item.name)] = true;
+  });
+  const rest = (candidates || []).filter(function (item) {
+    const name = String((item && (item.value || item.name)) || "").trim();
+    return name && !picked[name];
+  });
+  if (!rest.length) return "";
+  return (
+    '<p class="hint">加一项' + escapeHtml(label) + "：</p>" +
+    '<div class="chip-row">' +
+    rest
+      .map(function (item) {
+        const name = String(item.value || item.name || "").trim();
+        const text = String(item.label || name);
+        return (
+          '<button class="chip-add" type="button" data-od="1" data-bgiq-add="' +
+          escapeHtml(kind + "|" + name) +
+          '">+ ' +
+          escapeHtml(text) +
+          "</button>"
+        );
+      })
+      .join("") +
+    "</div>"
+  );
+}
+
+function bettergiQueueCandidatesHtml() {
+  const builtinLeft = BETTERGI_BUILTIN_GROUPS.filter(function (name) {
+    return bgiItemIndex(name) < 0;
+  }).map(function (name) {
+    return { value: name, label: name };
+  });
+  const custom = ((state.bgiCustomGroups || []).map(function (item) {
+    return { value: String((item && item.name) || ""), label: String((item && item.label) || (item && item.name) || "") };
+  })).filter(function (item) {
+    return item.value;
+  });
+  const parts = [
+    bgiCandidateChips("builtin", "内置组", builtinLeft),
+    bgiCandidateChips("scriptgroup", "配置组", custom),
+    bgiCandidateChips("js", "JS 脚本", bgiCandidateList("js")),
+    bgiCandidateChips("pathing", "地图追踪", bgiCandidateList("pathing")),
+    bgiCandidateChips("keymouse", "键鼠录制", bgiCandidateList("keymouse")),
+  ].filter(Boolean);
+  return parts.join("");
+}
+
+function bettergiQueueHtml() {
+  const order = state.bgiOrder;
+  if (!order) {
+    if (state.bgiOrderError) {
+      return (
+        '<div class="ord-block"><p class="hint">一条龙排程没读到：' +
+        escapeHtml(state.bgiOrderError) +
+        '</p><div class="ord-actions"><button class="mini-button" type="button" data-od="1" data-bgiq-retry="1">重试</button></div></div>'
+      );
+    }
+    return '<div class="ord-block"><p class="hint">正在读一条龙的排程…</p></div>';
+  }
+  const source = String(order.source || "groups");
+  const tip = BGI_SOURCE_TEXT[source] || BGI_SOURCE_TEXT.groups;
+  const dirty = state.bgiOrderDirty ? " · 未保存" : "";
   return [
-    '<div class="ord-head"><span>运行的配置组（列表顺序就是执行顺序）</span><span class="ord-actions">',
-    '<button class="mini-button" type="button" data-od="1" data-bgi-default="1">套用默认 8 组</button>',
-    '<button class="mini-button" type="button" data-od="1" data-bgi-clear="1">清空</button>',
+    '<div class="ord-block bgiq-block">',
+    '<div class="ord-head"><span>一条龙执行顺序' + escapeHtml(dirty) + "</span>",
+    '<span class="ord-actions">',
+    '<button class="mini-button" type="button" data-od="1" data-bgiq-default="1">套用默认 8 组</button>',
+    '<button class="mini-button" type="button" data-od="1" data-bgiq-clear="1">清空</button>',
+    '<button class="mini-button is-primary" type="button" data-od="1" data-bgiq-save="1">保存顺序</button>',
     "</span></div>",
-    rows || '<p class="hint">一组都没选，一条龙启动后什么都不做。</p>',
-    restHtml,
+    '<p class="hint">' + escapeHtml(tip) + (order.configPath ? " 配置文件：" + escapeHtml(String(order.configPath)) : "") + "</p>",
+    bettergiQueueRows(),
+    bettergiQueueCandidatesHtml(),
+    "</div>",
   ].join("");
+}
+
+function bgiSetItems(items) {
+  const order = state.bgiOrder || { source: "queue", items: [], configPath: "" };
+  order.items = items;
+  state.bgiOrder = order;
+  state.bgiOrderDirty = true;
+  refreshBettergiOrder();
+}
+
+function refreshBettergiOrder() {
+  if (typeof scriptDrawerOpen === "function" && scriptDrawerOpen()) renderScriptForm();
+  else renderTaskForm();
+}
+
+function loadBettergiOrder(scriptId, userId, force) {
+  const stamp = String(scriptId || "") + "|" + String(userId || "");
+  if (!force && state.bgiOrderStamp === stamp) return;
+  state.bgiOrderStamp = stamp;
+  state.bgiOrder = null;
+  state.bgiOrderDirty = false;
+  state.bgiOrderError = "";
+  state.bgiCandidates = null;
+  const configName = String((state.editing && state.editing.configName) || "");
+  callApi("bettergi/order", { scriptId: scriptId, userId: userId || "", configName: configName })
+    .then(function (data) {
+      if (activeScriptId() !== scriptId) return;
+      const order = (data && data.order) || null;
+      state.bgiOrder = order && Array.isArray(order.items) ? order : null;
+      state.bgiCandidates = (data && data.candidates) || {};
+      state.bgiCustomGroups = Array.isArray(data && data.custom) ? data.custom : state.bgiCustomGroups;
+      state.bgiOrderDirty = false;
+      state.bgiOrderError = state.bgiOrder ? "" : "AUTO-MAS 没返回排程数据。";
+      refreshBettergiOrder();
+    })
+    .catch(function (error) {
+      state.bgiOrder = null;
+      state.bgiOrderError = error.message || "请求失败";
+      refreshBettergiOrder();
+      showToast(error.message, true);
+    });
+}
+
+async function saveBettergiOrder(button) {
+  const scriptId = activeScriptId();
+  const items = bgiItems();
+  if (!scriptId) return;
+  if (!items.length) {
+    showToast("一条龙是空的，没东西可保存。", true);
+    return;
+  }
+  if (button) button.disabled = true;
+  try {
+    await postApi("bettergi/order/save", {
+      scriptId: scriptId,
+      userId: (state.editing && state.editing.userId) || "",
+      items: items.map(function (item) {
+        return { kind: item.kind, name: item.name, enabled: item.enabled !== false };
+      }),
+    });
+    showToast("一条龙顺序已保存");
+    state.bgiOrderDirty = false;
+    loadBettergiOrder(scriptId, (state.editing && state.editing.userId) || "", true);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function handleBettergiQueueClick(node) {
+  const attr = function (name) {
+    return node.getAttribute(name);
+  };
+  const has = function (name) {
+    return node.hasAttribute(name);
+  };
+  if (has("data-bgiq-check")) {
+    const index = Number(attr("data-bgiq-check"));
+    const items = bgiItems().slice();
+    if (!items[index]) return true;
+    items[index] = Object.assign({}, items[index], { enabled: node.checked !== false });
+    bgiSetItems(items);
+    return true;
+  }
+  if (has("data-bgiq-add")) {
+    const raw = String(attr("data-bgiq-add") || "");
+    const parts = raw.split("|");
+    const kind = parts[0] || "custom";
+    const name = parts.slice(1).join("|");
+    if (!name) return true;
+    const items = bgiItems().slice();
+    if (bgiItemIndex(name) < 0) items.push({ kind: kind, name: name, enabled: true });
+    bgiSetItems(items);
+    return true;
+  }
+  if (has("data-bgiq-del")) {
+    const items = bgiItems().slice();
+    items.splice(Number(attr("data-bgiq-del")), 1);
+    bgiSetItems(items);
+    return true;
+  }
+  if (has("data-bgiq-up") || has("data-bgiq-down")) {
+    const up = has("data-bgiq-up");
+    const key = up ? "data-bgiq-up" : "data-bgiq-down";
+    bgiSetItems(moveListItem(bgiItems(), Number(attr(key)), up ? -1 : 1));
+    return true;
+  }
+  if (has("data-bgiq-default")) {
+    bgiSetItems(
+      BETTERGI_BUILTIN_GROUPS.map(function (name) {
+        return { kind: "builtin", name: name, enabled: true };
+      }),
+    );
+    return true;
+  }
+  if (has("data-bgiq-clear")) {
+    bgiSetItems([]);
+    return true;
+  }
+  if (has("data-bgiq-retry")) {
+    loadBettergiOrder(activeScriptId(), (state.editing && state.editing.userId) || "", true);
+    return true;
+  }
+  if (has("data-bgiq-save")) {
+    saveBettergiOrder(node);
+    return true;
+  }
+  return false;
 }
 
 function bettergiCustomGroupList() {
@@ -5300,12 +6267,409 @@ function zzzAppListHtml() {
   ].join("");
 }
 
+// ---- 绝区零预备编队（zzz-od 的 team.yml，固定 20 个） ----
+// 一条龙跑图时用「游戏内编队」名对队伍；这里改的是名称和绑定的配队方案，
+// 成员（三个代理人）由一条龙自己在游戏里识别，插件只读不写。
+function zzzAgentName(agentId) {
+  const id = String(agentId || "");
+  if (!id || id === "unknown") return "未识别";
+  const list = state.zzzAgents || [];
+  for (let i = 0; i < list.length; i += 1) {
+    if (String(list[i].value) === id) return String(list[i].label || id);
+  }
+  return id;
+}
+
+function zzzTeamRowsHtml() {
+  const teams = state.zzzTeams || [];
+  if (!teams.length) return '<p class="hint">正在读预备编队…</p>';
+  const options = (state.zzzAutoBattle || []).map(function (item) {
+    return [item.value, item.label];
+  });
+  return teams
+    .map(function (team, index) {
+      const agents = (team.agents || []).map(zzzAgentName).join(" / ");
+      return [
+        '<div class="zzz-team-row">',
+        '<span class="zzz-team-idx">' + escapeHtml(String(index + 1)) + "</span>",
+        '<input class="task-input" type="text" data-zzz-team-name="' + index + '" value="' + escapeHtml(String(team.name || "")) + '" />',
+        '<select class="task-input" data-zzz-team-ab="' + index + '">',
+        selectOptions(options, String(team.autoBattle || "")),
+        "</select>",
+        '<span class="zzz-team-agents" title="成员由一条龙在游戏里识别">' + escapeHtml(agents || "无成员") + "</span>",
+        "</div>",
+      ].join("");
+    })
+    .join("");
+}
+
+function renderZzzTeamsBlock() {
+  const teams = state.zzzTeams || [];
+  const meta = teams.length ? teams.length + " 个编队" : "读取中";
+  return [
+    '<details class="task-section zzz-team-section">',
+    "<summary><span class=\"fold-title\">预备编队（游戏内配队）</span><span class=\"fold-meta\">",
+    escapeHtml(meta),
+    "</span></summary>",
+    '<p class="hint">一条龙按「游戏内编队」名字认队伍：改名称要和游戏里的编队名一致，右边的配队方案是自动战斗用哪套。成员由一条龙在游戏里识别，插件只读。</p>',
+    '<div class="zzz-team-rows">',
+    zzzTeamRowsHtml(),
+    "</div>",
+    '<div class="native-actions"><button class="mini-button" type="button" id="zzz-team-save">保存编队</button><span class="hint" id="zzz-team-state"></span></div>',
+    "</details>",
+  ].join("");
+}
+
+function loadZzzTeams(scriptId, userId) {
+  const key = String(scriptId) + "|" + String(userId);
+  if (state.zzzTeamKey === key) return;
+  state.zzzTeamKey = key;
+  state.zzzTeams = null;
+  state.zzzAutoBattle = [];
+  state.zzzAgents = [];
+  if (!scriptId || !userId) return;
+  callApi("zzzod/teams", { scriptId: scriptId, userId: userId })
+    .then(function (data) {
+      if (state.zzzTeamKey !== key) return;
+      state.zzzTeams = Array.isArray(data && data.teams) ? data.teams : [];
+      state.zzzAutoBattle = Array.isArray(data && data.autoBattle) ? data.autoBattle : [];
+      state.zzzAgents = Array.isArray(data && data.agents) ? data.agents : [];
+      if (state.activeTab === "task") renderTaskForm();
+    })
+    .catch(function (err) {
+      if (state.zzzTeamKey !== key) return;
+      state.zzzTeams = [];
+      if (state.activeTab === "task") renderTaskForm();
+      showToast("预备编队读取失败：" + String((err && err.message) || err), true);
+    });
+}
+
+function commitZzzTeamValue(target) {
+  const teams = state.zzzTeams || [];
+  const nameIdx = target.getAttribute("data-zzz-team-name");
+  const abIdx = target.getAttribute("data-zzz-team-ab");
+  const raw = nameIdx !== null ? nameIdx : abIdx;
+  if (raw === null) return;
+  const index = Number(raw);
+  if (!teams[index]) return;
+  if (nameIdx !== null) teams[index].name = String(target.value || "").trim();
+  else teams[index].autoBattle = String(target.value || "");
+}
+
+function saveZzzTeams() {
+  const teams = state.zzzTeams || [];
+  if (!teams.length) {
+    showToast("预备编队还没读出来。", true);
+    return;
+  }
+  const payload = teams.map(function (team) {
+    return {
+      name: String(team.name || ""),
+      autoBattle: String(team.autoBattle || ""),
+      agent_id_list: (team.agents || []).slice(),
+    };
+  });
+  const stateNode = document.getElementById("zzz-team-state");
+  if (stateNode) stateNode.textContent = "正在保存…";
+  postApi("zzzod/teams/save", {
+    scriptId: (state.editing && state.editing.scriptId) || "",
+    userId: (state.editing && state.editing.userId) || "",
+    teams: payload,
+  })
+    .then(function (data) {
+      const saved = Array.isArray(data && data.saved) ? data.saved : [];
+      if (saved.length) {
+        state.zzzTeams = saved.map(function (item) {
+          return {
+            idx: Number(item.idx || 0),
+            name: String(item.name || ""),
+            autoBattle: String(item.autoBattle || ""),
+            agents: Array.isArray(item.agents) ? item.agents : [],
+          };
+        });
+      }
+      if (stateNode) stateNode.textContent = "";
+      showToast("编队已保存");
+      if (state.activeTab === "task") renderTaskForm();
+    })
+    .catch(function (err) {
+      if (stateNode) stateNode.textContent = "";
+      showToast("保存编队失败：" + String((err && err.message) || err), true);
+    });
+}
+
+// ---- MaaEnd 理管任务（基质刷取 / 协议空间）与库存目标 ----
+// 执行策略是账号配置 Info.SanityStrategy（MAS / Native / Inventory），
+// 只有 Inventory 才会把 Task.SupplyPlanLimits 当库存计划交给 MaaEnd 去规划协议空间。
+const MAAEND_SANITY_STRATEGIES = [
+  {
+    value: "MAS",
+    label: "指定任务 / 计划表",
+    hint: "按下面「关卡」「任务开关」里的配置刷理智，库存目标不参与。",
+  },
+  {
+    value: "Native",
+    label: "沿用原生配置",
+    hint: "用 MaaEnd 自己配置里的理管设置，本页的关卡与库存目标都不生效。",
+  },
+  {
+    value: "Inventory",
+    label: "库存目标",
+    hint: "本轮按库存计划执行协议空间，固定关卡与周计划不应用。",
+  },
+];
+
+const MAAEND_SUPPLY_CATEGORIES = [
+  { key: "all", label: "全部" },
+  { key: "exp", label: "经验" },
+  { key: "break", label: "突破" },
+  { key: "skill", label: "技能" },
+  { key: "currency", label: "货币" },
+];
+
+// 分类没有由上游下发（inventory.inputs 只有 label 和 value），按材料 ID 后缀自己归档。
+const MAAEND_SUPPLY_CATEGORY_OF = {
+  T_CREDS: "currency",
+  PROTOHEDRON: "break",
+  PROTOPRISM: "break",
+  PROTOSET: "break",
+  PROTODISK: "break",
+  COGNITIVE_CARRIER_EXP: "exp",
+  COMBAT_RECORD_EXP: "exp",
+  WEAPON_EXP: "exp",
+  HEAVY_CAST_DIE: "skill",
+  CAST_DIE: "skill",
+  WARP_PLASMA_COATED_SLIDE: "skill",
+  TRIPHASIC_NANOFLAKE: "skill",
+  QUADRANT_FITTING_FLUID: "skill",
+  TACHYON_SCREENING_LATTICE: "skill",
+  D96_STEEL_SAMPLE_4: "skill",
+  METADIASTIMA_PHOTOEMISSION_TUBE: "skill",
+};
+
+function supplyCategoryOf(key) {
+  const short = String(key || "").replace(/^SupplyPlanLimit_/, "");
+  return MAAEND_SUPPLY_CATEGORY_OF[short] || "skill";
+}
+
+// 材料清单优先用 AUTO-MAS 下发的 inventory.inputs（上游加了新道具这里会自动多一行），
+// 拿不到就退回本地那张 16 项表。
+function inventoryInputs() {
+  const options = state.maaendOptions || {};
+  const inventory = options.inventory || {};
+  const inputs = Array.isArray(inventory.inputs) ? inventory.inputs : [];
+  const list = [];
+  inputs.forEach(function (item) {
+    if (!item || !item.value) return;
+    list.push({ key: String(item.value), label: String(item.label || item.value) });
+  });
+  if (list.length) return list;
+  return MAAEND_SUPPLY_ITEMS.map(function (item) {
+    return { key: item.key, label: item.label };
+  });
+}
+
+function supplySearchText() {
+  return String(state.supplySearch || "").trim().toLowerCase();
+}
+
+function supplyValues() {
+  return supplyPlanMap().map || {};
+}
+
+function supplyEntries() {
+  const map = supplyValues();
+  return inventoryInputs().map(function (item) {
+    const raw = map[item.key];
+    const value = raw === undefined || raw === null ? "" : String(raw);
+    return {
+      key: item.key,
+      label: item.label,
+      cat: supplyCategoryOf(item.key),
+      value: value,
+      filled: value.trim() !== "",
+    };
+  });
+}
+
+function supplyVisibleEntries() {
+  const keyword = supplySearchText();
+  const cat = String(state.supplyCat || "all");
+  const onlySet = Boolean(state.supplyOnlySet);
+  return supplyEntries().filter(function (item) {
+    if (cat !== "all" && item.cat !== cat) return false;
+    if (onlySet && !item.filled) return false;
+    if (keyword) {
+      const hay = (item.label + " " + item.key).toLowerCase();
+      if (hay.indexOf(keyword) < 0) return false;
+    }
+    return true;
+  });
+}
+
+function supplyRowsInner() {
+  const list = supplyVisibleEntries();
+  if (!list.length) {
+    return '<p class="hint">没有匹配的材料，换个关键词或者点「全部」。</p>';
+  }
+  return (
+    '<div class="supply-grid">' +
+    list
+      .map(function (item) {
+        return supplyRowHtml(item.key, item.label, item.value);
+      })
+      .join("") +
+    "</div>"
+  );
+}
+
+function supplyCountText() {
+  const all = supplyEntries();
+  const filled = all.filter(function (item) { return item.filled; }).length;
+  return "维护 " + all.length + " 项养成材料目标（已设置 " + filled + " 项）";
+}
+
+function supplyTabsInner() {
+  const entries = supplyEntries();
+  const cat = String(state.supplyCat || "all");
+  return MAAEND_SUPPLY_CATEGORIES.map(function (item) {
+    let count = entries.length;
+    if (item.key !== "all") {
+      count = entries.filter(function (entry) { return entry.cat === item.key; }).length;
+    }
+    return (
+      '<button class="supply-tab' + (item.key === cat ? " is-active" : "") + '" type="button" data-supply-cat="' +
+      escapeHtml(item.key) + '">' + escapeHtml(item.label) +
+      ' <span class="supply-tab-count">' + count + "</span></button>"
+    );
+  }).join("");
+}
+
+function renderSupplyPanel() {
+  return [
+    '<div class="supply-panel" id="supply-panel">',
+    '<div class="supply-toolbar">',
+    '<input class="task-input" type="search" id="supply-search" placeholder="搜索材料" value="' +
+      escapeHtml(state.supplySearch || "") + '" />',
+    '<label class="check-line"><input type="checkbox" id="supply-only-set"' +
+      (state.supplyOnlySet ? " checked" : "") + " /><span>仅显示已设置目标</span></label>",
+    "</div>",
+    '<div class="supply-meta"><span id="supply-count">' + escapeHtml(supplyCountText()) + "</span>",
+    '<span class="hint">目标须为 0-3000000000 的整数，不带前导零；0 表示不参与计划。</span></div>',
+    '<div class="supply-tabs" id="supply-tabs">' + supplyTabsInner() + "</div>",
+    '<div class="supply-rows" id="supply-rows">' + supplyRowsInner() + "</div>",
+    "</div>",
+  ].join("");
+}
+
+// 改搜索词 / 切分类只重写列表区，不动输入框本身，免得每敲一个字就丢焦点。
+function refreshSupplyPanel() {
+  if (!elements.taskForm) return;
+  const rows = elements.taskForm.querySelector("#supply-rows");
+  if (rows) rows.innerHTML = supplyRowsInner();
+  const count = elements.taskForm.querySelector("#supply-count");
+  if (count) count.textContent = supplyCountText();
+  const tabs = elements.taskForm.querySelector("#supply-tabs");
+  if (tabs) tabs.innerHTML = supplyTabsInner();
+}
+
+function maaendInventoryOption() {
+  const options = state.maaendOptions || {};
+  return options.inventory || null;
+}
+
+function renderMaaendSanitySection(data) {
+  const info = (data && data.Info) || {};
+  const task = (data && data.Task) || {};
+  if (!Object.prototype.hasOwnProperty.call(task, "IfSanity") && !Object.prototype.hasOwnProperty.call(task, "SupplyPlanLimits")) {
+    return "";
+  }
+  const strategy = String(info.SanityStrategy || "MAS");
+  const current =
+    MAAEND_SANITY_STRATEGIES.filter(function (item) { return item.value === strategy; })[0] ||
+    MAAEND_SANITY_STRATEGIES[0];
+  const inventory = maaendInventoryOption();
+  const description =
+    (inventory && inventory.description) ||
+    "为各培养道具设定目标。经验类按折算经验填写，其余按件数；全部达标后本轮结束。";
+  const claimModes = (inventory && Array.isArray(inventory.claimModes) && inventory.claimModes.length
+    ? inventory.claimModes
+    : MAAEND_PROTOCOL_CLAIM_OPTIONS
+  ).map(function (item) {
+    return { value: String(item.value), label: String(item.label || item.value) };
+  });
+  const claimValue = String(task.ProtocolSpaceObtainModeClaim || "ObtainScaling2");
+  const modes = MAAEND_SANITY_STRATEGIES.map(function (item) {
+    return (
+      '<button class="sanity-mode' + (item.value === strategy ? " is-active" : "") +
+      '" type="button" data-sanity-strategy="' + escapeHtml(item.value) + '" title="' +
+      escapeHtml(item.hint) + '">' + escapeHtml(item.label) + "</button>"
+    );
+  }).join("");
+  return [
+    '<section class="task-group sanity-group"><h3>理管任务（基质刷取 / 协议空间）</h3>',
+    '<div class="task-grid">',
+    '<label class="toggle-item"><input type="checkbox" data-conf-path="Task.IfSanity"' +
+      (task.IfSanity === false ? "" : " checked") + " /><span>启用理管任务</span></label>",
+    '<label class="toggle-item"><input type="checkbox" data-conf-path="Task.IfAutoUseSpMedication"' +
+      (task.IfAutoUseSpMedication === false ? "" : " checked") + " /><span>需要时自动用理智药</span></label>",
+    "</div>",
+    '<div class="sanity-strategy"><span class="sanity-strategy-label">执行策略</span>',
+    '<div class="sanity-modes">' + modes + "</div>",
+    '<p class="hint">' + escapeHtml(current.hint) + "</p></div>",
+    strategy === "Inventory"
+      ? ""
+      : '<p class="hint sanity-warn">当前执行策略不是「库存目标」，下面的材料目标值本轮不会用上；点到「库存目标」才生效。</p>',
+    '<div class="supply-block"><p class="hint">' + escapeHtml(description) + "</p>",
+    renderSupplyPanel(),
+    '<label class="task-field"><span>库存任务领取方式</span><select class="task-input" data-conf-path="Task.ProtocolSpaceObtainModeClaim">' +
+      selectOptions(
+        claimModes.map(function (item) { return [item.value, item.label]; }),
+        claimValue
+      ) + "</select></label>",
+    "</div></section>",
+  ].join("");
+}
+
+function setSanityStrategy(value) {
+  if (!setConfigPath("Info.SanityStrategy", String(value || ""))) return;
+  renderTaskForm();
+}
+
+function handleSupplyChange(target) {
+  if (target.id === "supply-only-set") {
+    state.supplyOnlySet = Boolean(target.checked);
+    refreshSupplyPanel();
+    return true;
+  }
+  return false;
+}
+
+function handleSupplyInput(target) {
+  if (target.id !== "supply-search") return false;
+  state.supplySearch = String(target.value || "");
+  refreshSupplyPanel();
+  return true;
+}
+
+function handleSupplyClick(node) {
+  if (node.hasAttribute("data-sanity-strategy")) {
+    setSanityStrategy(node.getAttribute("data-sanity-strategy"));
+    return true;
+  }
+  if (node.hasAttribute("data-supply-cat")) {
+    state.supplyCat = String(node.getAttribute("data-supply-cat") || "all");
+    refreshSupplyPanel();
+    return true;
+  }
+  return false;
+}
+
 function configCustomHtml(full) {
   const info = currentScriptInfo();
   const type = String((info && info.type) || "");
-  if (type === "MaaEndConfig" && full === "Task.SupplyPlanLimits") return supplyPlanHtml();
   if (type === "BetterGIConfig") {
-    if (full === "OneDragon.Groups") return '<div class="ord-block">' + bettergiGroupsHtml() + "</div>";
+    if (full === "OneDragon.Groups") return bettergiQueueHtml();
     if (full === "OneDragon.CustomGroups") return '<div class="ord-block">' + bettergiCustomGroupsHtml() + "</div>";
   }
   if (type === "ZzzOdConfig" && full === "OneDragon.AppList") {
@@ -5322,33 +6686,7 @@ function handleOneDragonClick(node) {
   const has = function (name) {
     return node.hasAttribute(name);
   };
-  if (has("data-bgi-group-add")) {
-    const name = attributeSafe(attr("data-bgi-group-add"));
-    const list = parseLooseList(bag.Groups).map(String);
-    if (name && list.indexOf(name) < 0) list.push(name);
-    writeOneDragon("Groups", list);
-    return true;
-  }
-  if (has("data-bgi-group-del")) {
-    const list = parseLooseList(bag.Groups).map(String);
-    list.splice(Number(attr("data-bgi-group-del")), 1);
-    writeOneDragon("Groups", list);
-    return true;
-  }
-  if (has("data-bgi-group-up") || has("data-bgi-group-down")) {
-    const delta = has("data-bgi-group-up") ? -1 : 1;
-    const key = has("data-bgi-group-up") ? "data-bgi-group-up" : "data-bgi-group-down";
-    writeOneDragon("Groups", moveListItem(parseLooseList(bag.Groups).map(String), Number(attr(key)), delta));
-    return true;
-  }
-  if (has("data-bgi-default")) {
-    writeOneDragon("Groups", BETTERGI_BUILTIN_GROUPS.slice());
-    return true;
-  }
-  if (has("data-bgi-clear")) {
-    writeOneDragon("Groups", []);
-    return true;
-  }
+  if (handleBettergiQueueClick(node)) return true;
   if (has("data-bgi-cg-add")) {
     const list = bettergiCustomGroupList();
     list.push({ name: "新配置组", enabled: true });
@@ -5458,6 +6796,7 @@ function loadTypeOptions() {
     else renderTaskForm();
   };
   if (type === "BetterGIConfig") {
+    loadBettergiOrder(scriptId, (state.editing && state.editing.userId) || "");
     if (state.bgiScript === scriptId) return;
     state.bgiScript = scriptId;
     state.bgiConfigs = [];
@@ -5484,6 +6823,7 @@ function loadTypeOptions() {
     return;
   }
   if (type === "ZzzOdConfig") {
+    loadZzzTeams(scriptId, (state.editing && state.editing.userId) || "");
     if (state.zzzScript === scriptId) return;
     state.zzzScript = scriptId;
     state.zzzCatalog = [];
@@ -5529,10 +6869,20 @@ function renderTaskFormInner() {
   const data = state.editing?.data || {};
   if (applyTaskTabState()) {
     elements.taskQuickHint.classList.add("is-hidden");
-    elements.taskForm.innerHTML = "";
-    elements.taskEmptyHint.textContent =
-      "这个账号的配置基线是「原生」：AUTO-MAS 只负责把脚本拉起来，做什么由脚本自己的配置决定，所以这边没有任务可勾。" +
-      "想让 MAS 下发任务，先到「基础」页把配置基线改成「独立」或「共享」，并勾上「启用覆写常规配置」。";
+    const cur = currentScriptInfo();
+    let nativeBlock = "";
+    if (cur && String(cur.type || "") === "MaaEndConfig") {
+      const sid = String((state.editing && state.editing.scriptId) || "");
+      const uid = String((state.editing && state.editing.userId) || "");
+      loadMaaendUser(sid, uid);
+      nativeBlock = maaendNativeBlock("user");
+    }
+    elements.taskForm.innerHTML = nativeBlock;
+    elements.taskEmptyHint.textContent = nativeBlock
+      ? "这个账号的配置基线是「原生」：AUTO-MAS 只负责把脚本拉起来，MAS 这边没有任务可勾。" +
+        "下面这块改的是 MaaEnd 自己安装目录里的任务参数，原生基线直接读这份。"
+      : "这个账号的配置基线是「原生」：AUTO-MAS 只负责把脚本拉起来，做什么由脚本自己的配置决定，所以这边没有任务可勾。" +
+        "想让 MAS 下发任务，先到「基础」页把配置基线改成「独立」或「共享」，并勾上「启用覆写常规配置」。";
     elements.taskEmptyHint.classList.remove("is-hidden");
     return;
   }
@@ -5573,7 +6923,14 @@ function renderTaskFormInner() {
           "（" +
           (current.typeLabel || current.type) +
           "）的任务参数：字段名和说明取自 AUTO-MAS 配置模型，开关直接勾、枚举走下拉、数字直接填；改哪项就提交哪项，不用自己写 JSON。";
-        elements.taskForm.innerHTML = ["<p class=\"hint\">", escapeHtml(intro), "</p>", schemaHtml].join("");
+        let nativeBlock = "";
+        if (String(current.type || "") === "MaaEndConfig") {
+          const sid = String((state.editing && state.editing.scriptId) || "");
+          const uid = String((state.editing && state.editing.userId) || "");
+          loadMaaendUser(sid, uid);
+          nativeBlock = maaendNativeBlock("user");
+        }
+        elements.taskForm.innerHTML = ["<p class=\"hint\">", escapeHtml(intro), "</p>", nativeBlock, schemaHtml].join("");
         elements.taskEmptyHint.classList.add("is-hidden");
         return;
       }
@@ -6084,6 +7441,10 @@ function maafwOptionRow(taskName, opt, value) {
   );
 }
 
+function maafwOpenOf(taskName) {
+  return (state.maafwOpenTasks || []).indexOf(taskName) >= 0;
+}
+
 function maafwTaskBlock(taskName, index, snapshot) {
   const meta = maafwTaskMeta()[taskName] || null;
   const options = meta && Array.isArray(meta.options) ? meta.options : [];
@@ -6093,21 +7454,31 @@ function maafwTaskBlock(taskName, index, snapshot) {
     .map(function (opt) {
       return maafwOptionRow(taskName, opt, values[opt.name]);
     })
-    .join("");
-  const desc = meta && meta.description ? "<p class=\"hint\">" + escapeHtml(meta.description) + "</p>" : "";
-  const body = rows
-    ? "<details class=\"task-section mfw-options\"><summary>选项（" + options.length + "）</summary><div class=\"task-grid\">" + rows + "</div></details>"
-    : "";
+    .join('');
+  const hasOptions = options.length > 0;
+  const opened = maafwOpenOf(taskName);
+  const desc = meta && meta.description ? String(meta.description).trim() : '';
+  const optionBtn = hasOptions
+    ? '<button class="mini-button mfw-opt-btn" type="button" data-od="1" data-mfw-options="' + escapeHtml(taskName) + '" data-mfw-count="' + options.length + '">选项 ' + options.length + ' ' + (opened ? '▴' : '▾') + '</button>'
+    : '';
+  const detail = desc
+    ? '<span class="mfw-detail" tabindex="0">详情<span class="mfw-tip">' + escapeHtml(desc) + '</span></span>'
+    : '';
+  const panel = hasOptions
+    ? '<div class="mfw-opt-panel' + (opened ? '' : ' is-hidden') + '" data-mfw-panel="' + escapeHtml(taskName) + '"><div class="task-grid">' + rows + '</div></div>'
+    : '';
   return (
-    "<div class=\"ord-row mfw-row" + (checked ? "" : " is-off") + "\">" +
-    "<label class=\"check-inline\"><input type=\"checkbox\" data-mfw-check=\"" + escapeHtml(taskName) + "\"" + (checked ? " checked" : "") + " /><span class=\"ord-name\">" +
+    '<div class="ord-row mfw-row' + (checked ? '' : ' is-off') + '">' +
+    '<label class="check-inline"><input type="checkbox" data-mfw-check="' + escapeHtml(taskName) + '"' + (checked ? ' checked' : '') + ' /><span class="ord-name">' +
     escapeHtml(taskName) +
-    "</span></label>" +
-    "<span class=\"ord-actions\">" +
-    "<button class=\"mini-button\" type=\"button\" data-od=\"1\" data-mfw-up=\"" + index + "\">↑</button>" +
-    "<button class=\"mini-button\" type=\"button\" data-od=\"1\" data-mfw-down=\"" + index + "\">↓</button>" +
-    "<button class=\"mini-button is-danger\" type=\"button\" data-od=\"1\" data-mfw-del=\"" + index + "\">移除</button>" +
-    "</span></div>" + desc + body
+    '</span></label>' +
+    optionBtn +
+    '<span class="ord-actions">' +
+    '<button class="mini-button" type="button" data-od="1" data-mfw-up="' + index + '">↑</button>' +
+    '<button class="mini-button" type="button" data-od="1" data-mfw-down="' + index + '">↓</button>' +
+    detail +
+    '<button class="mini-button is-danger" type="button" data-od="1" data-mfw-del="' + index + '">移除</button>' +
+    '</span></div>' + panel
   );
 }
 
@@ -6203,7 +7574,27 @@ function handleMaafwClick(node) {
     }
     return true;
   }
-  if (has("data-mfw-del")) {
+  if (has('data-mfw-options')) {
+    const name = String(attr('data-mfw-options') || '');
+    const list = Array.isArray(state.maafwOpenTasks) ? state.maafwOpenTasks.slice() : [];
+    const at = list.indexOf(name);
+    const opening = at < 0;
+    if (opening) list.push(name);
+    else list.splice(at, 1);
+    state.maafwOpenTasks = list;
+    if (elements.taskForm) {
+      const panels = elements.taskForm.querySelectorAll('[data-mfw-panel]');
+      Array.prototype.forEach.call(panels, function (panel) {
+        if (String(panel.getAttribute('data-mfw-panel')) !== name) return;
+        if (opening) panel.classList.remove('is-hidden');
+        else panel.classList.add('is-hidden');
+      });
+    }
+    const count = String(attr('data-mfw-count') || '');
+    node.textContent = '选项 ' + count + ' ' + (opening ? '▴' : '▾');
+    return true;
+  }
+  if (has('data-mfw-del')) {
     const snapshot = maafwSnapshot();
     const index = Number(attr("data-mfw-del"));
     if (index >= 0 && index < snapshot.order.length) {
@@ -6649,6 +8040,17 @@ function bindEvents() {
   if (elements.queueRun) elements.queueRun.addEventListener("click", runQueue);
   if (elements.histSearch) elements.histSearch.addEventListener("click", loadHistory);
   if (elements.scriptCreate) elements.scriptCreate.addEventListener("click", openScriptCreate);
+  if (elements.timedRefresh) elements.timedRefresh.addEventListener("click", () => loadTimed());
+  if (elements.bindingCreate) elements.bindingCreate.addEventListener("click", startBindingDraft);
+  if (elements.bindingDelete) {
+    elements.bindingDelete.addEventListener("click", function () {
+      if (!state.selectedBinding) return;
+      askConfirm("把这个人的绑定全清了？", ["cancel", "discard"]).then(function (choice) {
+        if (choice !== "discard") return;
+        removeBinding(state.selectedBinding, "");
+      });
+    });
+  }
   if (elements.scriptConfig) elements.scriptConfig.addEventListener("click", openScriptDrawer);
   if (elements.scriptDelete) elements.scriptDelete.addEventListener("click", deleteScript);
   if (elements.scriptStart) elements.scriptStart.addEventListener("click", startScript);
@@ -6663,6 +8065,16 @@ function bindEvents() {
       const target = event.target;
       if (target instanceof HTMLElement && isSchemaField(target)) commitScriptValue(target);
     });
+    elements.scriptForm.addEventListener("click", (event) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (!target) return;
+      if (target.closest("#maaend-native-retry")) {
+        loadMaaendNative(activeScriptId());
+        return;
+      }
+      const save = target.closest("[data-native-task]");
+      if (save) saveMaaendNative(save.getAttribute("data-native-task"), save);
+    });
   }
   if (elements.emulatorEditor) {
     elements.emulatorEditor.addEventListener("change", (event) => {
@@ -6676,6 +8088,11 @@ function bindEvents() {
       if (!(target instanceof HTMLElement)) return;
       if (target.dataset.settingKey) persistSetting(target);
       else if (target.dataset.webhookPath) commitWebhookField(target);
+    });
+    elements.settingEditor.addEventListener("click", (event) => {
+      const node = event.target instanceof HTMLElement ? event.target.closest("[data-sub-remove]") : null;
+      if (!node) return;
+      removeSubscriber(node.dataset.subRemove || "");
     });
   }
   if (elements.queueEditor) {
@@ -6762,9 +8179,14 @@ function bindEvents() {
   elements.taskForm.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+    if (handleSupplyChange(target)) return;
     if (handleOknteChange(target)) return;
     if (handleWhimboxChange(target)) return;
     if (handleMaafwChange(target)) return;
+    if (target.hasAttribute("data-zzz-team-name") || target.hasAttribute("data-zzz-team-ab")) {
+      commitZzzTeamValue(target);
+      return;
+    }
     commitTaskValue(target);
   });
   if (elements.infrastScan) elements.infrastScan.addEventListener("click", function () { scanInfrast(false); });
@@ -6783,6 +8205,19 @@ function bindEvents() {
       saveOknteConfigs();
       return;
     }
+    if (target.closest("#zzz-team-save")) {
+      saveZzzTeams();
+      return;
+    }
+    if (target.closest("#maaend-user-retry")) {
+      loadMaaendNativeFor("user", activeScriptId(), (state.editing && state.editing.userId) || "");
+      return;
+    }
+    const nativeSave = target.closest("[data-native-task]");
+    if (nativeSave) {
+      saveMaaendNative(nativeSave.getAttribute("data-native-task"), nativeSave);
+      return;
+    }
     const selector = [
       "[data-depot-add]",
       "[data-depot-remove]",
@@ -6795,9 +8230,12 @@ function bindEvents() {
       "[data-od]",
       "[data-whim-reset]",
       "[data-oknte-move]",
+      "[data-sanity-strategy]",
+      "[data-supply-cat]",
     ].join(",");
     const node = target.closest(selector);
     if (!node) return;
+    if (handleSupplyClick(node)) return;
     if (node.hasAttribute("data-oknte-move")) {
       handleOknteClick(node);
       return;
@@ -6831,7 +8269,9 @@ function bindEvents() {
   if (elements.schedPowerCancel) elements.schedPowerCancel.addEventListener("click", schedPowerCancel);
   elements.taskForm.addEventListener("input", (event) => {
     const target = event.target;
-    if (target instanceof HTMLElement) validateTaskJson(target);
+    if (!(target instanceof HTMLElement)) return;
+    if (handleSupplyInput(target)) return;
+    validateTaskJson(target);
   });
 }
 

@@ -27,6 +27,60 @@
     "hint": "0 表示不自动重启。AUTO-MAS 自己的失败重试耗尽后才会走到这里。",
     "default": 0
   },
+  "mas_data_dir": {
+    "type": "string",
+    "description": "AUTO-MAS 的 data 目录",
+    "hint": "账号选了独立 / 共享基线时，MaaEnd 的配置在 AUTO-MAS 的 data 目录里（AUTO-MAS 安装目录下的 data）。本机和 AUTO-MAS 同机就填绝对路径，跨机就填共享路径；留空则只能改原生基线那份。",
+    "default": ""
+  },
+  "queue_task_timeout_minutes": {
+    "type": "int",
+    "description": "排队里单个任务最多等多久（分钟）",
+    "hint": "超过这个时长还停不下来就判超时，接着跑队列里的下一个，免得一个人卡住整队。",
+    "default": 240
+  },
+  "queue_cross_limit": {
+    "type": "int",
+    "description": "同一个游戏一批最多合并几个人",
+    "hint": "交叉运行的上限。比如填 3，同一个托管项这一波最多排 3 个人，多出来的等下一波。填 0 表示不限。",
+    "default": 3
+  },
+  "notify_progress": {
+    "type": "bool",
+    "description": "每跑完一个脚本就发一条通知",
+    "hint": "关掉就只剩整批结束时那一条总结。开着才能在群里看到「它真的在动」。",
+    "default": true
+  },
+  "notify_each_user": {
+    "type": "bool",
+    "description": "每个账号跑完也单独发一条",
+    "hint": "一个脚本下挂了好几个账号时才值得开，否则消息会很密。",
+    "default": false
+  },
+  "notify_stuck_minutes": {
+    "type": "int",
+    "description": "多久没有任何状态变化就提醒卡住（分钟）",
+    "hint": "填 0 关闭卡住提醒。提醒只发一次，任务继续跑不会被打断。",
+    "default": 20
+  },
+  "notify_screenshot": {
+    "type": "bool",
+    "description": "失败时截一张模拟器画面一起发",
+    "hint": "通过 ADB 截图，能不能截到取决于模拟器是否开着、adb 是否连得上。",
+    "default": true
+  },
+  "notify_subscribers": {
+    "type": "bool",
+    "description": "运行通知也发给订阅过的会话",
+    "hint": "关掉后只有发起请求的会话和上面那个固定会话能收到。",
+    "default": true
+  },
+  "screenshot_adb_path": {
+    "type": "string",
+    "description": "adb.exe 路径（留空自动找）",
+    "hint": "只在自动找不到时填。默认从模拟器管理端可执行文件所在目录找 adb.exe。",
+    "default": ""
+  },
   "features": {
     "type": "object",
     "description": "功能开关",
@@ -75,6 +129,16 @@
       "settings": {
         "type": "bool",
         "description": "全局设置与通知渠道",
+        "default": true
+      },
+      "binding": {
+        "type": "bool",
+        "description": "多人绑定（QQ 与账号对应关系）",
+        "default": true
+      },
+      "timed": {
+        "type": "bool",
+        "description": "定时队列代管（到点排队、不打断、播报实际用时）",
         "default": true
       },
       "qq_command": {

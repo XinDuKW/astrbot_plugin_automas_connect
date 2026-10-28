@@ -12,6 +12,7 @@ from typing import Any
 from astrbot.api import logger
 from astrbot.api.web import error_response, json_response, request
 
+from . import bettergi_order, maaend_config
 from .mas_api import SCRIPT_ADD_TYPES, MasError, parse_runtime_snapshot
 
 PLUGIN_NAME = "astrbot_plugin_automas_connect"
@@ -46,6 +47,8 @@ FEATURE_KEYS = (
     "settings",
     "qq_command",
     "scheduler",
+    "binding",
+    "timed",
 )
 
 
@@ -110,6 +113,8 @@ class AutomasWebUIController:
             ("bettergi/configs", self.bettergi_configs, ["GET"], "BetterGI 一条龙配置名"),
             ("bettergi/customGroups", self.bettergi_custom_groups, ["GET"], "BetterGI 自定义配置组"),
             ("zzzod/catalog", self.zzzod_catalog, ["GET"], "绝区零一条龙任务目录"),
+            ("zzzod/teams", self.zzzod_teams, ["GET"], "绝区零预备编队"),
+            ("zzzod/teams/save", self.zzzod_teams_save, ["POST"], "保存绝区零预备编队"),
             ("whimbox/catalog", self.whimbox_catalog, ["GET"], "奇想盒一条龙任务目录"),
             ("oknte/configs", self.oknte_configs, ["POST"], "OK-NTE 任务流程配置"),
             ("oknte/save", self.oknte_save, ["POST"], "保存 OK-NTE 任务流程配置"),
@@ -129,6 +134,19 @@ class AutomasWebUIController:
             ("scheduler/power", self.scheduler_power, ["POST"], "设置任务完成后的电源操作"),
             ("scheduler/power/cancel", self.scheduler_power_cancel, ["POST"], "取消电源倒计时"),
             ("scheduler/scope", self.scheduler_scope, ["GET"], "队列本次能跑到的脚本与账号"),
+            ("bindings", self.bindings, ["GET"], "QQ 与账号的绑定表"),
+            ("binding/add", self.binding_add, ["POST"], "新增绑定"),
+            ("binding/remove", self.binding_remove, ["POST"], "解除绑定"),
+            ("queue/status", self.queue_status, ["GET"], "排队状态"),
+            ("queue/cancel", self.queue_cancel, ["POST"], "取消排队请求"),
+            ("timed", self.timed, ["GET"], "定时队列代管状态"),
+            ("timed/takeover", self.timed_takeover, ["POST"], "开关定时代管"),
+            ("notifications", self.notifications, ["GET"], "运行通知订阅者"),
+            ("notification/remove", self.notification_remove, ["POST"], "移除运行通知订阅者"),
+            ("maaend/native", self.maaend_native, ["GET"], "MaaEnd 原生任务参数"),
+            ("maaend/native/save", self.maaend_native_save, ["POST"], "保存 MaaEnd 原生任务参数"),
+            ("bettergi/order", self.bettergi_order, ["GET"], "BetterGI 一条龙执行顺序"),
+            ("bettergi/order/save", self.bettergi_order_save, ["POST"], "保存 BetterGI 一条龙执行顺序"),
         )
         for endpoint, handler, methods, description in routes:
             self.context.register_web_api(
@@ -151,6 +169,29 @@ class AutomasWebUIController:
             raw = {}
         return {key: bool(raw.get(key, True)) for key in FEATURE_KEYS}
 
+    def _mas_data_dir(self) -> str:
+        """AUTO-MAS 的 data 目录（独立/共享基线的配置放在它下面）。"""
+
+        config = getattr(self.plugin, "config", None)
+        if isinstance(config, dict):
+            return self._text(config.get("mas_data_dir"))
+        return ""
+
+    async def _maaend_target(self, script_id: str, user_id: str) -> tuple[str, str, str]:
+        """按账号基线解析出要读写的 mxu-MaaEnd.json，返回 (安装目录, 配置文件, 基线)。"""
+
+        client = self._build_client()
+        script = await client.get_script_raw(script_id)
+        root = str((script.get("Info") or {}).get("Path") or "").strip()
+        base: Any = "native"
+        if user_id:
+            config = await client.get_user_raw(script_id, user_id)
+            base = (config.get("Info") or {}).get("Base") or "shared"
+        path, kind = maaend_config.target_config_file(
+            root, self._mas_data_dir(), script_id, user_id, base
+        )
+        return root, str(path), kind
+
     @staticmethod
     async def _payload() -> dict[str, Any] | None:
         body = await request.json(default={})
@@ -161,6 +202,142 @@ class AutomasWebUIController:
     @staticmethod
     def _text(value: Any) -> str:
         return value.strip() if isinstance(value, str) else ""
+
+    # ---- 多人绑定 ----
+
+    def _binding_store(self) -> Any:
+        return getattr(self.plugin, "bindings", None)
+
+    def _queue_runner(self) -> Any:
+        return getattr(self.plugin, "queue", None)
+
+    async def bindings(self) -> Any:
+        store = self._binding_store()
+        if store is None:
+            return json_response({"bindings": []})
+        try:
+            scripts = await self._build_client().get_scripts()
+            names = {item["uid"]: item["name"] for item in scripts}
+        except MasError:
+            names = {}
+        return json_response({"bindings": store.overview(names)})
+
+    async def binding_add(self) -> Any:
+        store = self._binding_store()
+        if store is None:
+            return error_response("绑定表没初始化", status_code=500)
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        qq = self._text(body.get("qq"))
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        display = self._text(body.get("display"))
+        if not qq or not script_id or not user_id:
+            return error_response("qq / scriptId / userId 都不能为空", status_code=400)
+        owner = store.owner_of(script_id, user_id)
+        if owner and owner != qq:
+            return error_response(f"这个账号已经绑给 {owner} 了", status_code=409)
+        try:
+            client = self._build_client()
+            scripts = await client.get_scripts()
+            script = next((item for item in scripts if item["uid"] == script_id), None)
+            if script is None:
+                return error_response("托管项不存在", status_code=404)
+            accounts = await client.get_users(script_id)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        user = next((item for item in accounts if item["uid"] == user_id), None)
+        if user is None:
+            return error_response("账号不存在", status_code=404)
+        store.set_binding(qq, display, script_id, script["name"], user_id, user["name"])
+        return json_response(
+            {
+                "binding": {
+                    "qq": qq,
+                    "scriptId": script_id,
+                    "scriptName": script["name"],
+                    "userId": user_id,
+                    "userName": user["name"],
+                }
+            }
+        )
+
+    async def binding_remove(self) -> Any:
+        store = self._binding_store()
+        if store is None:
+            return error_response("绑定表没初始化", status_code=500)
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        qq = self._text(body.get("qq"))
+        if not qq:
+            return error_response("缺少 qq", status_code=400)
+        removed = store.remove_binding(qq, self._text(body.get("scriptId")))
+        return json_response({"removed": removed})
+
+    # ---- 排队 ----
+
+    async def queue_status(self) -> Any:
+        runner = self._queue_runner()
+        if runner is None:
+            return json_response({"running": [], "waiting": []})
+        return json_response(runner.snapshot())
+
+    async def queue_cancel(self) -> Any:
+        runner = self._queue_runner()
+        if runner is None:
+            return json_response({"cancelled": 0})
+        body = await self._payload()
+        qq = self._text((body or {}).get("qq"))
+        removed = runner.cancel(qq)
+        return json_response({"cancelled": len(removed)})
+
+    # ---- 定时代管 ----
+
+    async def timed(self) -> Any:
+        scheduler = getattr(self.plugin, "timed", None)
+        if scheduler is None:
+            return json_response({"queues": [], "runs": [], "takeover": []})
+        try:
+            return json_response(await scheduler.snapshot())
+        except MasError as exc:
+            return error_response(f"连接 AUTO-MAS 失败：{exc}")
+
+    async def timed_takeover(self) -> Any:
+        scheduler = getattr(self.plugin, "timed", None)
+        if scheduler is None:
+            return error_response("这个版本没启用定时代管", status_code=400)
+        body = await self._payload()
+        queue_id = self._text((body or {}).get("queueId"))
+        if not queue_id:
+            return error_response("缺少 queueId", status_code=400)
+        raw_on = (body or {}).get("on")
+        on = raw_on if isinstance(raw_on, bool) else str(raw_on or "").strip().lower() in {"1", "true", "yes", "on"}
+        try:
+            result = await scheduler.set_takeover(queue_id, on)
+        except MasError as exc:
+            return error_response(f"切换定时代管失败：{exc}")
+        return json_response(result)
+
+    # ---- 运行通知订阅者 ----
+
+    async def notifications(self) -> Any:
+        store = getattr(self.plugin, "notices", None)
+        if store is None:
+            return json_response({"subscribers": []})
+        return json_response({"subscribers": store.items()})
+
+    async def notification_remove(self) -> Any:
+        store = getattr(self.plugin, "notices", None)
+        if store is None:
+            return error_response("这个版本没有运行通知", status_code=400)
+        body = await self._payload()
+        umo = self._text((body or {}).get("umo"))
+        if not umo:
+            return error_response("缺少 umo", status_code=400)
+        removed = store.unsubscribe(umo)
+        return json_response({"removed": bool(removed)})
 
     # ---- 接口实现 ----
 
@@ -1136,6 +1313,63 @@ class AutomasWebUIController:
             return error_response(str(exc), status_code=502)
         return json_response({"options": options})
 
+    async def maaend_native(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        user_id = self._text(request.query.get("userId"))
+        task_name = self._text(request.query.get("task"))
+        try:
+            root, config_path, kind = await self._maaend_target(script_id, user_id)
+            if task_name:
+                info = maaend_config.describe(root, task_name, config_path)
+            else:
+                info = maaend_config.describe_all(root, config_path)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        except maaend_config.MaaEndError as exc:
+            return error_response(str(exc), status_code=400)
+        info["base"] = kind
+        info["baseLabel"] = maaend_config.BASE_LABELS.get(kind, kind)
+        info["configPath"] = config_path
+        info["userScoped"] = bool(user_id)
+        return json_response({"native": info})
+
+    async def maaend_native_save(self) -> Any:
+        body = await request.json(default={})
+        script_id = self._text(body.get("scriptId"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        user_id = self._text(body.get("userId"))
+        values = body.get("values")
+        if not isinstance(values, dict) or not values:
+            return error_response("没有要保存的值", status_code=400)
+        task_name = self._text(body.get("task")) or "AutoSell"
+        raw_mtime = body.get("mtime")
+        expect = float(raw_mtime) if isinstance(raw_mtime, (int, float)) else None
+        try:
+            root, config_path, kind = await self._maaend_target(script_id, user_id)
+            result = maaend_config.apply(
+                root,
+                task_name,
+                {str(key): value for key, value in values.items()},
+                expect,
+                config_path,
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        except maaend_config.MaaEndError as exc:
+            return error_response(str(exc), status_code=400)
+        return json_response(
+            {
+                "saved": True,
+                "path": result["path"],
+                "changed": result["changed"],
+                "mtime": result["mtime"],
+                "base": kind,
+            }
+        )
+
     async def maafw_definition(self) -> Any:
         script_id = self._text(request.query.get("scriptId"))
         if not script_id:
@@ -1213,6 +1447,116 @@ class AutomasWebUIController:
             return error_response(str(exc), status_code=502)
         return json_response({"groups": items})
 
+    async def _bettergi_one_dragon(
+        self, script_id: str, user_id: str
+    ) -> tuple[str, str, str, dict[str, Any], dict[str, Any]]:
+        """取 BetterGI 的 (安装目录, 基线, 配置文件路径, 一条龙配置, 账号/脚本配置)。"""
+
+        client = self._build_client()
+        script = await client.get_script_raw(script_id)
+        info = script.get("Info") or {}
+        root = str(info.get("RootPath") or info.get("Path") or "").strip()
+        base = "shared"
+        one_dragon: dict[str, Any] = {}
+        config: dict[str, Any] = script
+        if user_id:
+            config = await client.get_user_raw(script_id, user_id)
+            base = str((config.get("Info") or {}).get("Base") or "shared").strip() or "shared"
+        one_dragon = config.get("OneDragon") or {}
+        if not isinstance(one_dragon, dict):
+            one_dragon = {}
+        return root, base, str(info.get("Name") or ""), one_dragon, config
+
+    async def bettergi_order(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        user_id = self._text(request.query.get("userId"))
+        config_name = self._text(request.query.get("configName"))
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        client = self._build_client()
+        try:
+            root, base, _, one_dragon, config = await self._bettergi_one_dragon(
+                script_id, user_id
+            )
+            path = bettergi_order.resolve_config_path(
+                root, self._mas_data_dir(), script_id, user_id, base, config_name
+            )
+            file_config = bettergi_order.read_config(path)
+            try:
+                custom_groups = await client.get_bettergi_custom_groups(
+                    script_id, user_id, config_name, base.lower() == "independent"
+                )
+            except MasError:
+                custom_groups = []
+            order = bettergi_order.build_order(
+                one_dragon, file_config, custom_groups, path
+            )
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+
+        async def safe(coro: Any) -> list[dict[str, str]]:
+            try:
+                return await coro
+            except MasError:
+                return []
+
+        candidates = {
+            "js": await safe(client.get_bettergi_js_scripts(script_id)),
+            "keymouse": await safe(client.get_bettergi_key_mouse_scripts(script_id)),
+            "pathing": await safe(client.get_bettergi_pathing(script_id)),
+            "scriptgroup": await safe(
+                client.get_bettergi_script_groups(script_id, user_id)
+            ),
+        }
+        return json_response(
+            {
+                "order": order,
+                "builtin": bettergi_order.BUILTIN_GROUPS,
+                "custom": custom_groups,
+                "candidates": candidates,
+                "base": base,
+                "scriptName": str((config.get("Info") or {}).get("Name") or ""),
+                "configName": bettergi_order.config_name(config_name),
+            }
+        )
+
+    async def bettergi_order_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求体必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        items = body.get("items")
+        if not script_id:
+            return error_response("缺少 scriptId", status_code=400)
+        if not isinstance(items, list) or not items:
+            return error_response("items 必须是非空的顺序列表", status_code=400)
+        queue = bettergi_order.queue_payload(items)
+        groups = bettergi_order.groups_for(items)
+        client = self._build_client()
+        try:
+            if user_id:
+                config = await client.get_user_raw(script_id, user_id)
+                one_dragon = config.get("OneDragon")
+                if not isinstance(one_dragon, dict):
+                    one_dragon = {}
+                    config["OneDragon"] = one_dragon
+                one_dragon["Queue"] = queue
+                one_dragon["Groups"] = groups
+                await client.update_user(script_id, user_id, config)
+            else:
+                script = await client.get_script_raw(script_id)
+                one_dragon = script.get("OneDragon")
+                if not isinstance(one_dragon, dict):
+                    one_dragon = {}
+                    script["OneDragon"] = one_dragon
+                one_dragon["Queue"] = queue
+                one_dragon["Groups"] = groups
+                await client.update_script(script_id, script)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": True, "queue": queue, "groups": groups})
+
     async def zzzod_catalog(self) -> Any:
         script_id = self._text(request.query.get("scriptId"))
         if not script_id:
@@ -1222,6 +1566,47 @@ class AutomasWebUIController:
         except MasError as exc:
             return error_response(str(exc), status_code=502)
         return json_response({"catalog": items})
+
+    async def zzzod_teams(self) -> Any:
+        script_id = self._text(request.query.get("scriptId"))
+        user_id = self._text(request.query.get("userId"))
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        instance_idx = self._text(request.query.get("instanceIdx"))
+        try:
+            data = await self._build_client().get_zzzod_teams(
+                script_id, user_id, int(instance_idx) if instance_idx else None
+            )
+        except ValueError:
+            return error_response("instanceIdx 必须是整数", status_code=400)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response(data)
+
+    async def zzzod_teams_save(self) -> Any:
+        body = await self._payload()
+        if body is None:
+            return error_response("请求内容必须是 JSON 对象", status_code=400)
+        script_id = self._text(body.get("scriptId"))
+        user_id = self._text(body.get("userId"))
+        teams = body.get("teams")
+        if not script_id or not user_id:
+            return error_response("缺少 scriptId 或 userId", status_code=400)
+        if not isinstance(teams, list) or not teams:
+            return error_response("teams 必须是非空数组", status_code=400)
+        instance_idx = body.get("instanceIdx")
+        try:
+            saved = await self._build_client().save_zzzod_teams(
+                script_id,
+                user_id,
+                teams,
+                int(instance_idx) if instance_idx is not None else None,
+            )
+        except (TypeError, ValueError):
+            return error_response("instanceIdx 必须是整数", status_code=400)
+        except MasError as exc:
+            return error_response(str(exc), status_code=502)
+        return json_response({"saved": saved})
 
     async def cultivate_operators(self) -> Any:
         body = await self._payload()
