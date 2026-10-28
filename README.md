@@ -35,6 +35,25 @@ astrbot_plugin_automas_connect/
 - 装好后必须在 `AstrBot/data/cmd_config.json` 的 `plugin_set` 白名单里加上插件名，否则 AstrBot 压根不会加载它（该文件带 BOM，读写用 utf-8-sig）。
 - 改了 Python 代码要重载插件；只改 `pages/` 下的静态文件刷新页面即可。
 
+## 连另一台电脑上的 AUTO-MAS
+
+插件和 AUTO-MAS 不一定要装在同一个机器上——AstrBot 跑在 NAS / 小主机、MAS 跑在游戏机上是很常见的拆法。纯 HTTP 的部分（托管项、账号、任务参数、计划表、队列、定时、模拟器、运行历史、设置、排队、通知）都只走接口，跨机直接可用，把 `mas_base_url` 改掉就行：
+
+```
+mas_base_url = http://192.168.1.50:36163     # 换成 MAS 那台机的内网 IP
+```
+
+1. **MAS 那台的端口要放行**。AUTO-MAS 后端本来就监听 `0.0.0.0:36163`（源码调试版 36164），不用改配置，只要在防火墙放行入站 TCP 36163。Windows 可以管理员开 PowerShell：
+   ```
+   New-NetFirewallRule -DisplayName "AUTO-MAS API" -Direction Inbound -Protocol TCP -LocalPort 36163 -Action Allow -Profile Private
+   ```
+2. **先在自己机器上证一下通**：浏览器或 `curl http://192.168.1.50:36163/api/health` 能返回 JSON 才算通。连不上按顺序查：IP 对不对 → 两台在不在同一网段 → 防火墙 → MAS 是否正在运行。
+3. **这几块要额外条件**，它们不是纯 HTTP，而是插件直接读 MAS 那台机的文件：
+   - **MaaEnd 原生任务参数**（以及账号页那块「MaaEnd 参数」）：插件用文件路径读 `mxu-MaaEnd.json`。跨机时必须让那几份文件对本机可见，最省事的是在 MAS 那台机把目录共享出来，然后把 `mas_data_dir` 填成 UNC 路径，例如 `\\192.168.1.50\Automation\AUTO-MAS\data`；MaaEnd 安装目录同理。填不了就这块用不了，其余功能不受影响。
+   - **自定义基建排班表**：扫描目录是插件在本机读的（可以填 UNC），但「导入」是把路径交给 MAS、由 MAS 在它自己那台机上读文件。跨机时扫描用 UNC、导入用 MAS 本地绝对路径最稳；两边都填同一个 UNC 路径通常也能用（MAS 访问自己的共享），但要看共享权限。
+   - **失败截图**：截图是 MAS 用 `/api/ocr/screenshot/adb` 在它本机对模拟器截的，跨机反而是对的；要留意的是 `screenshot_adb_path` 要填 **MAS 那台机上**的 `adb.exe` 路径（留空时插件按模拟器管理端位置自动推，推出来的也是 MAS 那边的路径）。
+4. **别把 36163 暴露到公网**。MAS 的接口没有鉴权，内网/回环地址之外谁都能调，需要远程访问请走 VPN 或 SSH 隧道。
+
 ## 配置
 
 | 键 | 说明 | 默认 |
@@ -52,7 +71,7 @@ astrbot_plugin_automas_connect/
 | `notify_screenshot` | 失败时截一张模拟器画面一起发 | true |
 | `notify_subscribers` | 运行通知也发给订阅过的会话 | true |
 | `screenshot_adb_path` | adb.exe 路径，留空自动从模拟器目录找 | 空 |
-| `mas_data_dir` | AUTO-MAS 的 data 目录；账号用共享 / 独立基线时，MaaEnd 参数改的是这里那几份副本 | 空 |
+| `mas_data_dir` | AUTO-MAS 的 data 目录（跨机时填 UNC，如 `\\192.168.1.50\Automation\AUTO-MAS\data`）；账号用共享 / 独立基线时，MaaEnd 参数改的是这里那几份副本 | 空 |
 
 ### 功能开关
 
